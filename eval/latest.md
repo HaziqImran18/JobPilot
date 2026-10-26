@@ -1,6 +1,6 @@
 # JobPilot eval report
 
-Generated: 2026-10-26T08:29:48+00:00  
+Generated: 2026-10-26T09:39:42+00:00  
 Mode: offline / deterministic  
 Dataset: 10 labelled roles
 

@@ -29,7 +29,7 @@ def services(seeded_workspace):
 def test_jobs_are_ranked_with_a_profile(services):
     assert services["jobs"].count() == 10
     ranked = services["matching"].rank_jobs(
-        JobQuery(query="AI Engineer", limit=6), limit=6, refresh=False, use_llm=False
+        JobQuery(query="AI", limit=6), limit=6, refresh=False, use_llm=False
     )
     assert len(ranked) == 6
     scores = [item.match.score for item in ranked]

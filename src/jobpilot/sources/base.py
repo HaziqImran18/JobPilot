@@ -58,6 +58,23 @@ class SourceAdapter(ABC):
             },
         )
 
+    def _html_client(self) -> httpx.Client:
+        # Public job-board HTML often rejects non-browser user agents. These are
+        # ordinary GET requests to public pages, not headless-browser sessions.
+        return httpx.Client(
+            timeout=httpx.Timeout(self.settings.http_timeout),
+            follow_redirects=True,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/124.0.0.0 Safari/537.36"
+                ),
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+            },
+        )
+
     def get_json(self, url: str, params: dict[str, Any] | None = None) -> Any:
         self._throttle()
         try:
@@ -72,12 +89,27 @@ class SourceAdapter(ABC):
             raise SourceError(f"{self.name}: {exc}") from exc
 
     def get_text(self, url: str, params: dict[str, Any] | None = None) -> str:
+        return self._get_text(url, params, self._client())
+
+    def get_html(self, url: str, params: dict[str, Any] | None = None) -> str:
+        return self._get_text(url, params, self._html_client())
+
+    def _get_text(
+        self,
+        url: str,
+        params: dict[str, Any] | None,
+        client: httpx.Client,
+    ) -> str:
         self._throttle()
         try:
-            with self._client() as client:
+            with client:
                 response = client.get(url, params=params)
                 response.raise_for_status()
                 return response.text
+        except httpx.HTTPStatusError as exc:
+            status = exc.response.status_code
+            hint = " (blocked automated access)" if status in {401, 403, 429} else ""
+            raise SourceError(f"{self.name}: HTTP {status}{hint}") from exc
         except httpx.HTTPError as exc:
             raise SourceError(f"{self.name}: {exc}") from exc
 

@@ -53,14 +53,26 @@
         </select>
       </label>
       <label class="field">
+        <span>Posted</span>
+        <select id="job-posted">
+          <option value="">Any time</option>
+          <option value="1">Last 24 hours</option>
+          <option value="3">Last 3 days</option>
+          <option value="7">Last 7 days</option>
+          <option value="14">Last 2 weeks</option>
+          <option value="30">Last 30 days</option>
+        </select>
+      </label>
+      <label class="field">
         <span>Sort</span>
         <select id="job-sort">
           <option value="newest">Newest first</option>
           <option value="score">Best match</option>
           <option value="salary">Salary</option>
+          <option value="oldest">Oldest first</option>
         </select>
       </label>
-      <label class="field">
+      <label class="field field-score">
         <span>Min score · <b id="min-score-label">any</b></span>
         <input type="range" id="job-min-score" min="0" max="95" step="5" value="0">
       </label>
@@ -72,6 +84,11 @@
         <button class="btn btn-secondary btn-sm" id="rank-jobs-btn">{{ icon("sparkles", 15) }} Rank matches</button>
         <button class="btn btn-primary btn-sm" id="refresh-jobs-btn">{{ icon("refresh", 15) }} Fetch fresh jobs</button>
       </div>
+    </div>
+    <div class="active-filters" id="active-filters" hidden>
+      <span class="active-filters-label">Active</span>
+      <div class="chip-row" id="active-filter-chips"></div>
+      <button class="btn btn-ghost btn-xs" id="clear-filters-btn">{{ icon("x", 13) }} Clear filters</button>
     </div>
   </section>
 
@@ -97,6 +114,7 @@
     <p>Fetch jobs from the free sources. Every posting comes from a live job board.</p>
     <div class="button-row">
       <button class="btn btn-primary" data-empty-action="refresh">{{ icon("refresh", 16) }} Fetch fresh jobs</button>
+      <button class="btn btn-ghost" data-empty-action="clear" id="empty-clear-filters" hidden>{{ icon("x", 16) }} Clear filters</button>
     </div>
   </div>
 

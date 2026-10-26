@@ -56,15 +56,19 @@
           <a class="icon-link" href="{{ url_for('views.system_page') }}" title="System status">{{ icon("arrow-right", 16) }}</a>
         </div>
         <div class="user-card">
-          <span class="avatar" id="user-avatar">{{ current_user.initials if current_user else 'JP' }}</span>
-          <div class="user-copy">
-            <strong id="user-name">{{ current_user.display_name if current_user else 'Account' }}</strong>
-            <small id="user-headline">{{ current_user.email if current_user else '' }}</small>
+          <div class="user-identity">
+            <span class="avatar" id="user-avatar">{{ current_user.initials if current_user else 'JP' }}</span>
+            <div class="user-copy">
+              <strong id="user-name">{{ current_user.display_name if current_user else 'Account' }}</strong>
+              <small id="user-headline">{{ current_user.email if current_user else '' }}</small>
+            </div>
           </div>
           {% if current_user %}
           <form method="post" action="{{ url_for('views.logout') }}" class="logout-form">
             <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-            <button class="icon-btn" type="submit" title="Sign out" aria-label="Sign out">{{ icon("arrow-right", 15) }}</button>
+            <button class="btn btn-ghost btn-sm logout-btn" type="submit" title="Sign out of {{ current_user.email }}">
+              {{ icon("logout", 15) }} <span>Sign out</span>
+            </button>
           </form>
           {% endif %}
         </div>
@@ -80,6 +84,12 @@
           <p>{{ page_subtitle }}</p>
         </div>
         <div class="topbar-actions">
+          {% if current_user %}
+          <a class="account-chip" href="{{ url_for('views.profile_page') }}" title="Signed in as {{ current_user.email }}">
+            <span class="account-chip-dot">{{ current_user.initials }}</span>
+            <span class="hide-sm">{{ current_user.display_name }}</span>
+          </a>
+          {% endif %}
           <div class="budget-pill" id="budget-pill" title="Today's model spend">
             {{ icon("dollar", 14) }} <span id="budget-text">$0.0000</span>
           </div>

@@ -81,7 +81,10 @@ class Settings(BaseSettings):
     enable_rss: bool = True
     enable_jobicy: bool = True
     enable_himalayas: bool = True
-    enable_linkedin: bool = False
+    enable_linkedin: bool = True
+    enable_mustakbil: bool = True
+    enable_talent: bool = True
+    enable_indeed: bool = True
     http_timeout: float = 20.0
     user_agent: str = "JobPilot/0.2 (job search agent)"
 
@@ -160,6 +163,9 @@ class Settings(BaseSettings):
                 "jobicy": self.enable_jobicy,
                 "himalayas": self.enable_himalayas,
                 "linkedin": self.enable_linkedin,
+                "mustakbil": self.enable_mustakbil,
+                "talent": self.enable_talent,
+                "indeed": self.enable_indeed,
             },
         }
 

@@ -217,6 +217,18 @@ def list_jobs() -> Response:
         min_score = float(min_score_raw) if min_score_raw else None
     except ValueError as exc:
         raise ApiError("min_score must be a number.", 400) from exc
+    posted_raw = request.args.get("posted_within_days", "")
+    try:
+        posted_within_days = int(posted_raw) if posted_raw else None
+    except ValueError as exc:
+        raise ApiError("posted_within_days must be a number.", 400) from exc
+    if posted_within_days is not None:
+        posted_within_days = max(1, min(posted_within_days, 90))
+    try:
+        limit = min(max(int(request.args.get("limit", 24)), 1), 60)
+        offset = max(int(request.args.get("offset", 0)), 0)
+    except ValueError as exc:
+        raise ApiError("limit and offset must be numbers.", 400) from exc
     result = get_jobs().list_cards(
         profile_version=_profile_version(),
         query=request.args.get("query", ""),
@@ -225,8 +237,9 @@ def list_jobs() -> Response:
         source=request.args.get("source", ""),
         min_score=min_score,
         sort=request.args.get("sort", "newest"),
-        limit=min(max(int(request.args.get("limit", 24)), 1), 60),
-        offset=max(int(request.args.get("offset", 0)), 0),
+        posted_within_days=posted_within_days,
+        limit=limit,
+        offset=offset,
     )
     return jsonify(result)
 
@@ -244,6 +257,8 @@ class JobSearchRequest(BaseModel):
     location: str = ""
     remote: bool | None = None
     limit: int = Field(default=24, ge=1, le=50)
+    posted_within_days: int | None = Field(default=None, ge=1, le=90)
+    sources: list[str] = Field(default_factory=list)
     use_llm: bool = True
 
 
@@ -256,6 +271,8 @@ def refresh_jobs() -> Response:
         location=payload.location,
         remote=payload.remote,
         limit=min(payload.limit, 50),
+        posted_within_days=payload.posted_within_days,
+        sources=payload.sources,
     )
     report = get_jobs().refresh(query)
     ranked = get_matching().rank_jobs(
@@ -282,6 +299,8 @@ def rank_jobs() -> Response:
         location=payload.location,
         remote=payload.remote,
         limit=min(payload.limit, 50),
+        posted_within_days=payload.posted_within_days,
+        sources=payload.sources,
     )
     ranked = get_matching().rank_jobs(
         query,

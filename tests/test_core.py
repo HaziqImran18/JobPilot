@@ -29,7 +29,10 @@ def test_settings_are_safe_and_resolve_modes(tmp_path):
     assert "openai_api_key" not in public
     assert public["sources"]["jobicy"] is True
     assert public["sources"]["himalayas"] is True
-    assert public["sources"]["linkedin"] is False
+    assert public["sources"]["linkedin"] is True
+    assert public["sources"]["mustakbil"] is True
+    assert public["sources"]["talent"] is True
+    assert public["sources"]["indeed"] is True
 
 
 def test_salary_extraction_handles_common_formats():
@@ -114,12 +117,27 @@ def test_free_source_registry_has_no_keyed_adapters(tmp_path):
         traces_dir=tmp_path / "traces",
         uploads_dir=tmp_path / "uploads",
         openai_api_key="",
-        enable_linkedin=False,
     )
     names = {adapter.name for adapter in SourceRegistry(settings).enabled_adapters()}
-    assert {"remotive", "arbeitnow", "remoteok", "jobicy", "himalayas", "rss"} <= names
+    assert {
+        "remotive",
+        "arbeitnow",
+        "remoteok",
+        "jobicy",
+        "himalayas",
+        "rss",
+        "linkedin",
+        "mustakbil",
+        "talent",
+        "indeed",
+    } <= names
     assert "adzuna" not in names
-    assert "linkedin" not in names
+    assert "rozee" not in names
+    assert "bayt" not in names
+
+    disabled = settings.model_copy(update={"enable_linkedin": False})
+    disabled_names = {adapter.name for adapter in SourceRegistry(disabled).enabled_adapters()}
+    assert "linkedin" not in disabled_names
 
 
 def test_injection_scan_and_untrusted_wrapper():

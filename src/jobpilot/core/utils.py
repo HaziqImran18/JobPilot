@@ -6,7 +6,7 @@ import hashlib
 import json
 import re
 import unicodedata
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -132,6 +132,44 @@ def html_to_text(html: str | None) -> str:
         return re.sub(r"\n{3,}", "\n\n", soup.get_text("\n", strip=True))
     except Exception:  # pragma: no cover - defensive fallback
         return re.sub(r"<[^>]+>", " ", html)
+
+
+_RELATIVE_DATE = re.compile(
+    r"(?P<count>\d+\+?)\s*(?P<unit>minute|hour|day|week|month|year)s?\s+ago", re.IGNORECASE
+)
+
+
+def parse_relative_date(value: Any) -> datetime | None:
+    """Parse the relative timestamps used by job boards ("3 days ago")."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
+    text = re.sub(r"\s+", " ", str(value)).strip().lower()
+    if not text:
+        return None
+    if re.search(r"\b(just posted|today|posted today|new)\b", text):
+        return utc_now()
+    if "yesterday" in text:
+        return utc_now() - timedelta(days=1)
+    match = _RELATIVE_DATE.search(text)
+    if not match:
+        return None
+    raw = match.group("count").rstrip("+")
+    try:
+        count = int(raw)
+    except ValueError:
+        return None
+    unit = match.group("unit").lower()
+    delta = {
+        "minute": timedelta(minutes=count),
+        "hour": timedelta(hours=count),
+        "day": timedelta(days=count),
+        "week": timedelta(weeks=count),
+        "month": timedelta(days=count * 30),
+        "year": timedelta(days=count * 365),
+    }[unit]
+    return utc_now() - delta
 
 
 def clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:

@@ -86,23 +86,37 @@
   }
 
   function skillRow(skill) {
-    const levelOptions = [1, 2, 3, 4, 5]
-      .map((level) => `<option value="${level}" ${Number(skill.level || 3) === level ? "selected" : ""}>${level}</option>`)
+    const levelOptions = [
+      [1, "1 · Familiar"],
+      [2, "2 · Working"],
+      [3, "3 · Confident"],
+      [4, "4 · Advanced"],
+      [5, "5 · Expert"],
+    ]
+      .map(([level, label]) => `<option value="${level}" ${Number(skill.level || 3) === level ? "selected" : ""}>${label}</option>`)
       .join("");
     return `<div class="skill-row" data-kind="skill" data-id="${JP.esc(skill.id || "")}">
-      <input type="text" data-field="name" value="${JP.esc(skill.name || "")}" placeholder="Skill name" aria-label="Skill name">
-      <select data-field="level" aria-label="Level">${levelOptions}</select>
-      <input type="number" data-field="years" value="${JP.esc(skill.years ?? 0)}" min="0" step="0.5" aria-label="Years">
-      <input type="text" data-field="category" class="skill-category" value="${JP.esc(skill.category || "general")}" placeholder="category" aria-label="Category">
+      <input type="text" data-field="name" value="${JP.esc(skill.name || "")}" placeholder="e.g. Python" aria-label="Skill name">
+      <select data-field="level" aria-label="Skill level">${levelOptions}</select>
+      <input type="number" data-field="years" value="${JP.esc(skill.years ?? 0)}" min="0" step="0.5" aria-label="Years used" placeholder="Years">
+      <input type="text" data-field="category" class="skill-category" list="skill-categories" value="${JP.esc(skill.category || "general")}" placeholder="category" aria-label="Skill category">
       <button class="icon-btn" type="button" data-remove="skill" title="Remove skill">${icon("trash", 14)}</button>
     </div>`;
+  }
+
+  function renderSkills(skills) {
+    const list = $("#skill-list");
+    if (!list) return;
+    list.innerHTML = skills.length
+      ? skills.map(skillRow).join("")
+      : '<p class="skill-empty">No skills yet. Add the tools you can defend in an interview, with an honest level and years of use.</p>';
   }
 
   function renderRepeatables(profile) {
     $("#experience-list").innerHTML = (profile.experiences || []).map(experienceCard).join("");
     $("#education-list").innerHTML = (profile.education || []).map(educationCard).join("");
     $("#project-list").innerHTML = (profile.projects || []).map(projectCard).join("");
-    $("#skill-list").innerHTML = (profile.skills || []).map(skillRow).join("");
+    renderSkills(profile.skills || []);
   }
 
   function renderProfile(profile) {
@@ -294,6 +308,7 @@
       profile.projects = [...(profile.projects || []), { name: "", description: "", url: "", skills: [] }];
       $("#project-list").insertAdjacentHTML("beforeend", projectCard(profile.projects[profile.projects.length - 1], profile.projects.length - 1));
     } else if (kind === "skill") {
+      $("#skill-list")?.querySelector(".skill-empty")?.remove();
       $("#skill-list").insertAdjacentHTML("beforeend", skillRow({ name: "", level: 3, years: 1, category: "general" }));
     }
     setDirty(true);
@@ -312,6 +327,9 @@
       const kind = button.dataset.remove;
       if (kind === "skill") button.closest(".skill-row")?.remove();
       else button.closest(".repeat-card")?.remove();
+      if (kind === "skill" && !document.querySelector('#skill-list [data-kind="skill"]')) {
+        renderSkills([]);
+      }
       setDirty(true);
       updateFactCounts();
     });

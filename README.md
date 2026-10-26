@@ -99,7 +99,7 @@ The CLI resolves an account automatically when exactly one exists. With several 
 
 ## What you can do
 
-- **Job board** — search, filter by location/work mode/source/minimum score, open detail modals, tailor and track.
+- **Job board** - search by title/company/skill, filter by location, work mode, source, posted date and minimum score, then sort by recency, fit or salary.
 - **Chat** — streamed tool timeline, job cards, approvals and memory proposals.
 - **Applications** — Kanban pipeline with drag/drop stages, follow-up dates, notes and a full event history.
 - **Memory** — inspect, add, confirm, forget and test recall.
@@ -186,7 +186,10 @@ Copy `.env.example` to `.env`. Every setting can also be supplied as an environm
 | `JOBPILOT_UPLOADS_DIR` | `data/uploads` | Base upload path |
 | `JOBPILOT_PRELOAD_MCP` | `false` | Warm MCP servers for existing accounts at startup |
 | `JOBPILOT_ENABLE_REMOTIVE` / `ARBEITNOW` / `REMOTEOK` / `JOBICY` / `HIMALAYAS` / `RSS` | `true` | Free source adapters |
-| `JOBPILOT_ENABLE_LINKEDIN` | `false` | Stub only; automation is intentionally disabled |
+| `JOBPILOT_ENABLE_LINKEDIN` | `true` | Public LinkedIn guest search, no sign-in |
+| `JOBPILOT_ENABLE_MUSTAKBIL` | `true` | Mustakbil Pakistan category/city pages |
+| `JOBPILOT_ENABLE_TALENT` | `true` | Talent.com Pakistan search |
+| `JOBPILOT_ENABLE_INDEED` | `true` | Best-effort Indeed RSS/HTML; usually blocked by Cloudflare |
 | `JOBPILOT_HTTP_TIMEOUT` | `20` | Source request timeout in seconds |
 
 Set a real `JOBPILOT_SECRET_KEY` before exposing the app beyond localhost. The web app redirects the base storage paths into the signed-in account's workspace; the base paths are mainly for CLI and test runs.
@@ -303,9 +306,14 @@ Recall ranks by embedding similarity, recency and importance. The Memory page ex
 | Himalayas | Free remote-job feed |
 | RSS | Public feeds, with HTML sanitisation |
 | Manual / JSON-LD | Paste a URL and extract structured job data |
-| LinkedIn | Deliberately a disabled stub: scraping violates its terms |
+| LinkedIn | Public guest job-search pages only; no account, cookie or application |
+| Mustakbil | Pakistani technology, city and remote category pages |
+| Talent.com | Pakistan search with detail-page descriptions |
+| Indeed | Best-effort public RSS/HTML; most networks receive Cloudflare HTTP 403 |
 
 Sources fan out concurrently. Priority only breaks duplicate ties; identity comes from a normalized fingerprint of title, company and location. Job descriptions are treated as untrusted data and wrapped before they reach a model.
+
+**Known limits:** Indeed, Rozee.pk, Bayt and Careerjet currently answer automated requests with Cloudflare 403 from this project's test network, and there is no free Indeed API. The Indeed adapter reports that block explicitly. Mustakbil's keyword endpoint returns HTTP 410 and its category pages do not expose pagination, so the adapter reads the first page of each technology/city category. LinkedIn is read through its public guest endpoints with a delay between requests; disable it with `JOBPILOT_ENABLE_LINKEDIN=false` if you prefer not to use those pages.
 
 ---
 
@@ -388,7 +396,7 @@ The shared `data/auth.db` stores only account records. See `data/README.md` for 
 - External actions (`mark_submitted`) block on an explicit approval, persisted and visible after reload.
 - LLM calls are budget-capped daily and per run. The app refuses to chat without a key.
 - Untrusted job text is wrapped and screened for injection patterns.
-- LinkedIn automation is intentionally not implemented.
+- LinkedIn is read only through public guest pages; JobPilot never signs in, applies or messages on your behalf.
 
 **Limitations:** this is a local-first, single-server application. It does not include email verification, password reset, OAuth, TLS termination or rate limiting, and it is not a hardened multi-tenant deployment for the public internet. Each active account spawns its own MCP subprocess group, which is fine locally but memory-heavy at scale. Docker is intentionally deferred until the repository is ready to publish.
 

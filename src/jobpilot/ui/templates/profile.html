@@ -92,11 +92,33 @@
           <div>
             <span class="eyebrow">Toolkit</span>
             <h3>Skills</h3>
-            <p>Level runs from 1 (familiar) to 5 (production expert).</p>
+            <p>Level runs from 1 (familiar) to 5 (production expert). Years is how long you have actually used it.</p>
           </div>
           <button class="btn btn-ghost btn-sm" type="button" id="add-skill">{{ icon("plus", 15) }} Add skill</button>
         </div>
+        <div class="skill-editor-head" aria-hidden="true">
+          <span>Skill</span>
+          <span>Level</span>
+          <span>Years</span>
+          <span>Category</span>
+          <span></span>
+        </div>
         <div class="skill-editor" id="skill-list"></div>
+        <p class="skill-hint">
+          Level: 1 familiar · 2 working · 3 confident · 4 advanced · 5 expert.
+          Category groups the skill (language, framework, database, cloud, data, tool, soft-skill).
+        </p>
+        <datalist id="skill-categories">
+          <option value="language"></option>
+          <option value="framework"></option>
+          <option value="database"></option>
+          <option value="cloud"></option>
+          <option value="data"></option>
+          <option value="ml"></option>
+          <option value="tool"></option>
+          <option value="soft-skill"></option>
+          <option value="general"></option>
+        </datalist>
       </section>
 
       <section class="panel">

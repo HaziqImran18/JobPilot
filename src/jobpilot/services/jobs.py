@@ -7,9 +7,166 @@ from typing import Any
 
 from jobpilot.core.db import Database, get_db
 from jobpilot.core.models import Job, JobCard, JobQuery, Salary
-from jobpilot.core.utils import json_dumps, json_loads, money_label, to_iso, utc_now_iso
+from jobpilot.core.utils import (
+    json_dumps,
+    json_loads,
+    money_label,
+    normalize_text,
+    to_iso,
+    utc_now_iso,
+)
 from jobpilot.pipelines.extract import dedupe, to_job
 from jobpilot.sources.registry import FetchReport, SourceRegistry, get_registry
+
+_PAKISTAN_CITIES = (
+    "pakistan",
+    "lahore",
+    "karachi",
+    "islamabad",
+    "rawalpindi",
+    "faisalabad",
+    "multan",
+    "peshawar",
+    "quetta",
+    "hyderabad",
+    "gujranwala",
+    "sialkot",
+    "bahawalpur",
+    "sargodha",
+    "abbottabad",
+    "sukkur",
+    "larkana",
+    "jhelum",
+    "okara",
+    "sahiwal",
+    "wah cantt",
+    "taxila",
+    "mardan",
+    "nowshera",
+    "charsadda",
+    "dera ghazi khan",
+    "dera ismail khan",
+    "rahim yar khan",
+    "jhang",
+    "sheikhupura",
+    "kasur",
+    "gujrat",
+    "mandi bahauddin",
+    "chiniot",
+    "muzaffarabad",
+    "muzaffargarh",
+    "kotli",
+    "attock",
+    "hafizabad",
+    "mirpur",
+    "bannu",
+    "kohat",
+    "swabi",
+    "gilgit",
+    "skardu",
+    "ajk",
+    "azad kashmir",
+)
+
+# Location filters are deliberately explicit. A location search must never be
+# satisfied by a remote job whose location never mentions that place.
+_LOCATION_GROUPS: dict[str, tuple[str, ...]] = {
+    "pakistan": _PAKISTAN_CITIES,
+    "pk": _PAKISTAN_CITIES,
+    "punjab": (
+        "punjab",
+        "lahore",
+        "rawalpindi",
+        "faisalabad",
+        "multan",
+        "gujranwala",
+        "sialkot",
+        "bahawalpur",
+        "sargodha",
+        "jhelum",
+        "okara",
+        "sahiwal",
+        "jhang",
+        "sheikhupura",
+        "kasur",
+        "gujrat",
+        "attock",
+        "hafizabad",
+    ),
+    "sindh": ("sindh", "karachi", "hyderabad", "sukkur", "larkana", "khairpur"),
+    "khyber pakhtunkhwa": (
+        "khyber pakhtunkhwa",
+        "kpk",
+        "kp",
+        "peshawar",
+        "abbottabad",
+        "mardan",
+        "nowshera",
+        "charsadda",
+        "dera ismail khan",
+        "bannu",
+        "kohat",
+        "swabi",
+    ),
+    "kpk": (
+        "khyber pakhtunkhwa",
+        "kpk",
+        "kp",
+        "peshawar",
+        "abbottabad",
+        "mardan",
+        "nowshera",
+        "charsadda",
+        "dera ismail khan",
+        "bannu",
+        "kohat",
+        "swabi",
+    ),
+    "balochistan": ("balochistan", "quetta", "gwadar", "turbat", "khuzdar"),
+    "islamabad": ("islamabad", "islamabad capital territory", "ict"),
+    "rawalpindi": ("rawalpindi", "pindi"),
+    "karachi": ("karachi", "karāchi"),
+    "lahore": ("lahore", "lāhore"),
+}
+_REMOTE_LOCATION_TERMS = (
+    "remote",
+    "anywhere",
+    "worldwide",
+    "work from home",
+    "wfh",
+    "distributed",
+    "global",
+)
+
+
+def _is_remote_location(location: str) -> bool:
+    return any(term in location for term in _REMOTE_LOCATION_TERMS)
+
+
+def _location_terms(location: str) -> tuple[str, ...]:
+    """Expand a city or country into the spellings boards actually publish."""
+    cleaned = re.sub(r"\s*,\s*", ",", location).strip()
+    parts = [part.strip() for part in cleaned.split(",") if part.strip()]
+    primary = parts[0] if parts else cleaned
+    terms: list[str] = list(_LOCATION_GROUPS.get(primary, (primary,)))
+    # Keep the original phrase as well ("islamabad, pakistan") for exact rows.
+    if len(parts) > 1:
+        terms.append(cleaned)
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for term in terms:
+        if term and term not in seen:
+            seen.add(term)
+            ordered.append(term)
+    return tuple(ordered)
+
+
+def _remote_clause() -> str:
+    parts = ["j.remote = 1"]
+    parts.extend(
+        f"lower(COALESCE(j.location, '')) LIKE '%{term}%'" for term in _REMOTE_LOCATION_TERMS
+    )
+    return f"({' OR '.join(parts)})"
 
 
 class JobService:
@@ -59,10 +216,17 @@ class JobService:
         source: str = "",
         min_score: float | None = None,
         sort: str = "newest",
+        posted_within_days: int | None = None,
         limit: int = 20,
         offset: int = 0,
     ) -> dict[str, Any]:
-        filters = JobQuery(query=query, location=location, remote=remote, limit=limit)
+        filters = JobQuery(
+            query=query,
+            location=location,
+            remote=remote,
+            limit=limit,
+            posted_within_days=posted_within_days,
+        )
         clauses, params = self._filters(filters)
         if source:
             clauses.append("j.source = ?")
@@ -71,11 +235,17 @@ class JobService:
             clauses.append("COALESCE(s.score, 0) >= ?")
             params.append(min_score)
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-        order = (
-            "ORDER BY (s.score IS NULL) ASC, s.score DESC, j.posted_at DESC"
-            if sort == "score"
-            else "ORDER BY j.posted_at DESC, j.fetched_at DESC"
-        )
+        if sort == "score":
+            order = "ORDER BY (s.score IS NULL) ASC, s.score DESC, j.posted_at DESC"
+        elif sort == "salary":
+            order = (
+                "ORDER BY (COALESCE(j.salary_max, j.salary_min) IS NULL) ASC, "
+                "COALESCE(j.salary_max, j.salary_min) DESC, j.posted_at DESC"
+            )
+        elif sort == "oldest":
+            order = "ORDER BY j.posted_at ASC, j.fetched_at ASC"
+        else:
+            order = "ORDER BY j.posted_at DESC, j.fetched_at DESC"
         rows = self.db.query(
             f"""SELECT j.*, s.score, s.breakdown, s.matched_skills, s.missing_skills, s.rationale
                 FROM jobs j
@@ -192,6 +362,12 @@ class JobService:
                     has_salary,
                     salary.period if salary else None,
                     to_iso(job.posted_at),
+                    None if job.remote is None else int(job.remote),
+                    None if job.remote is None else int(job.remote),
+                    job.location,
+                    job.location,
+                    job.employment_type,
+                    job.employment_type,
                     job.id,
                 )
             )
@@ -202,7 +378,10 @@ class JobService:
                salary_max = CASE WHEN ? THEN ? ELSE salary_max END,
                salary_currency = CASE WHEN ? THEN ? ELSE salary_currency END,
                salary_period = CASE WHEN ? THEN ? ELSE salary_period END,
-               posted_at = COALESCE(posted_at, ?)
+               posted_at = COALESCE(posted_at, ?),
+               remote = CASE WHEN ? IS NULL THEN remote ELSE ? END,
+               location = CASE WHEN ? <> '' THEN ? ELSE location END,
+               employment_type = CASE WHEN ? <> '' THEN ? ELSE employment_type END
                WHERE id = ?""",
             updates,
         )
@@ -264,25 +443,42 @@ class JobService:
             if fts:
                 clauses.append("j.rowid IN (SELECT rowid FROM jobs_fts WHERE jobs_fts MATCH ?)")
                 params.append(fts)
-        if query.location.strip():
-            clauses.append("(j.location LIKE ? OR j.remote = 1)")
-            params.append(f"%{query.location.strip()}%")
+        location = normalize_text(query.location)
+        if location:
+            if _is_remote_location(location):
+                clauses.append(_remote_clause())
+            else:
+                terms = _location_terms(location)
+                matches = " OR ".join("lower(j.location) LIKE ?" for _ in terms)
+                clauses.append(f"({matches})")
+                params.extend(f"%{term}%" for term in terms)
         if query.remote is True:
-            clauses.append("(j.remote = 1 OR lower(j.location) LIKE '%remote%')")
+            clauses.append(_remote_clause())
         elif query.remote is False:
-            clauses.append("(j.remote = 0 OR j.remote IS NULL)")
+            non_remote = ["COALESCE(j.remote, 0) = 0"]
+            non_remote.extend(
+                f"lower(COALESCE(j.location, '')) NOT LIKE '%{term}%'"
+                for term in _REMOTE_LOCATION_TERMS
+            )
+            clauses.append(f"({' AND '.join(non_remote)})")
+        if query.sources:
+            placeholders = ", ".join("?" for _ in query.sources)
+            clauses.append(f"j.source IN ({placeholders})")
+            params.extend(query.sources)
         if query.posted_within_days:
-            clauses.append("j.posted_at >= ?")
             from datetime import UTC, datetime, timedelta
 
             cutoff = datetime.now(UTC) - timedelta(days=query.posted_within_days)
+            clauses.append("j.posted_at >= ?")
             params.append(cutoff.date().isoformat())
         return clauses, params
 
     @staticmethod
     def _fts_query(text: str) -> str:
         tokens = re.findall(r"[A-Za-z0-9+#]{2,}", text)[:8]
-        return " OR ".join(f'"{token}"*' for token in tokens)
+        # Every word has to appear somewhere in the posting. Using OR here made
+        # a search for "AI engineer" return every job mentioning either word.
+        return " AND ".join(f'"{token}"*' for token in tokens)
 
     @staticmethod
     def _row_to_job(row: Any) -> Job:

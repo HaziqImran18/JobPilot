@@ -15,20 +15,69 @@
       location: $("#job-location")?.value.trim() || "",
       remote: $("#job-remote")?.value || "",
       source: $("#job-source")?.value || "",
+      postedDays: $("#job-posted")?.value || "",
       sort: $("#job-sort")?.value || "newest",
       minScore: Number($("#job-min-score")?.value || 0),
     };
   }
+
+  const POSTED_LABELS = {
+    "1": "Last 24 hours",
+    "3": "Last 3 days",
+    "7": "Last 7 days",
+    "14": "Last 2 weeks",
+    "30": "Last 30 days",
+  };
 
   function queryString(filters, extra = {}) {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value === "" || value === null || value === undefined) return;
       if (key === "minScore" && !value) return;
-      params.set(key === "minScore" ? "min_score" : key, value);
+      const name = key === "minScore" ? "min_score" : key === "postedDays" ? "posted_within_days" : key;
+      params.set(name, value);
     });
     Object.entries(extra).forEach(([key, value]) => params.set(key, value));
     return params.toString();
+  }
+
+  function activeFilterEntries(filters) {
+    const entries = [];
+    if (filters.query) entries.push(["Search", `“${filters.query}”`]);
+    if (filters.location) entries.push(["Location", filters.location]);
+    if (filters.remote === "true") entries.push(["Work mode", "Remote only"]);
+    if (filters.remote === "false") entries.push(["Work mode", "On-site / hybrid"]);
+    if (filters.source) entries.push(["Source", JP.titleCase(filters.source)]);
+    if (filters.postedDays) entries.push(["Posted", POSTED_LABELS[filters.postedDays] || `${filters.postedDays} days`]);
+    if (filters.minScore) entries.push(["Min score", `${filters.minScore}+`]);
+    return entries;
+  }
+
+  function renderActiveFilters(filters) {
+    const row = $("#active-filters");
+    const chips = $("#active-filter-chips");
+    if (!row || !chips) return;
+    const entries = activeFilterEntries(filters);
+    row.hidden = entries.length === 0;
+    chips.innerHTML = entries
+      .map(([label, value]) => `<span class="filter-chip"><b>${JP.esc(label)}</b>${JP.esc(value)}</span>`)
+      .join("");
+  }
+
+  function clearFilters() {
+    ["#job-search", "#job-location"].forEach((selector) => {
+      const input = $(selector);
+      if (input) input.value = "";
+    });
+    ["#job-remote", "#job-source", "#job-posted", "#job-sort"].forEach((selector) => {
+      const select = $(selector);
+      if (select) select.value = select.id === "job-sort" ? "newest" : "";
+    });
+    const score = $("#job-min-score");
+    if (score) score.value = "0";
+    const scoreLabel = $("#min-score-label");
+    if (scoreLabel) scoreLabel.textContent = "any";
+    loadJobs();
   }
 
   function setSync(text, tone = "") {
@@ -76,20 +125,24 @@
 
   async function loadStats() {
     try {
-      const [remote, scored] = await Promise.all([
+      const [all, remote, scored] = await Promise.all([
+        JP.api("/api/jobs?limit=1"),
         JP.api("/api/jobs?remote=true&limit=1"),
         JP.api("/api/jobs?min_score=1&limit=1"),
       ]);
+      const sourceCount = Object.keys(all.sources || {}).length;
       renderStats({
-        total: state.total,
-        sources: state.sources,
+        total: all.total,
+        sources: all.sources,
         remote: remote.total,
         scored: scored.total,
       });
       const foot = $("#stat-scored-foot");
-      if (foot) foot.textContent = `${state.total ? Math.round((scored.total / state.total) * 100) : 0}% of board`;
+      if (foot) foot.textContent = `${all.total ? Math.round((scored.total / all.total) * 100) : 0}% of board`;
       const jobsFoot = $("#stat-jobs-foot");
-      if (jobsFoot) jobsFoot.textContent = `${Object.keys(state.sources).length} source${Object.keys(state.sources).length === 1 ? "" : "s"} represented`;
+      if (jobsFoot) {
+        jobsFoot.textContent = `${sourceCount} source${sourceCount === 1 ? "" : "s"} represented`;
+      }
     } catch (error) {
       /* Stats are decorative; leave the em dashes on failure. */
     }
@@ -113,13 +166,28 @@
       state.total = data.total || 0;
       state.sources = data.sources || {};
       renderSourceOptions(state.sources);
+      renderActiveFilters(filters);
       renderGrid(data.items || [], append);
-      renderStats({ total: state.total, sources: state.sources });
+      const active = activeFilterEntries(filters);
       const summary = $("#jobs-summary");
       if (summary) {
         summary.textContent = state.total
-          ? `${state.total} role${state.total === 1 ? "" : "s"}${filters.query ? ` matching “${filters.query}”` : ""}${filters.remote === "true" ? " · remote only" : ""}`
-          : "No roles match these filters yet.";
+          ? `${state.total} role${state.total === 1 ? "" : "s"}${active.length ? ` · ${active.length} filter${active.length === 1 ? "" : "s"} active` : " on your board"}`
+          : "";
+      }
+      const empty = $("#jobs-empty");
+      if (empty) {
+        const heading = empty.querySelector("h3");
+        const copy = empty.querySelector("p");
+        const clear = $("#empty-clear-filters");
+        if (clear) clear.hidden = !(state.total === 0 && active.length);
+        if (state.total === 0 && active.length) {
+          if (heading) heading.textContent = "No roles match these filters";
+          if (copy) copy.textContent = "Widen the location, work mode, date or score filters, or clear them to see the whole board.";
+        } else {
+          if (heading) heading.textContent = "No postings yet";
+          if (copy) copy.textContent = "Fetch jobs from the free sources. Every posting comes from a live job board.";
+        }
       }
       setSync(`Synced ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`);
       if (!append) loadStats();
@@ -146,6 +214,8 @@
           query: filters.query,
           location: filters.location,
           remote: filters.remote === "" ? null : filters.remote === "true",
+          posted_within_days: filters.postedDays ? Number(filters.postedDays) : null,
+          sources: filters.source ? [filters.source] : [],
           limit: 30,
           use_llm: true,
         },
@@ -189,6 +259,8 @@
           query: filters.query,
           location: filters.location,
           remote: filters.remote === "" ? null : filters.remote === "true",
+          posted_within_days: filters.postedDays ? Number(filters.postedDays) : null,
+          sources: filters.source ? [filters.source] : [],
           limit: 30,
           use_llm: true,
         },
@@ -241,7 +313,7 @@
     };
     $("#job-search")?.addEventListener("input", debounced);
     $("#job-location")?.addEventListener("input", debounced);
-    ["#job-remote", "#job-source", "#job-sort"].forEach((selector) => {
+    ["#job-remote", "#job-source", "#job-posted", "#job-sort"].forEach((selector) => {
       $(selector)?.addEventListener("change", () => loadJobs());
     });
     $("#job-min-score")?.addEventListener("input", (event) => {
@@ -250,6 +322,7 @@
       window.clearTimeout(timer);
       timer = window.setTimeout(() => loadJobs(), 220);
     });
+    $("#clear-filters-btn")?.addEventListener("click", clearFilters);
     $("#refresh-jobs-btn")?.addEventListener("click", refreshJobs);
     $("#rank-jobs-btn")?.addEventListener("click", rankJobs);
     $("#import-job-btn")?.addEventListener("click", importJobModal);
@@ -257,6 +330,9 @@
     document.querySelectorAll("[data-empty-action]").forEach((button) => {
       if (button.dataset.emptyAction === "refresh") {
         button.addEventListener("click", refreshJobs);
+      }
+      if (button.dataset.emptyAction === "clear") {
+        button.addEventListener("click", clearFilters);
       }
     });
     document.addEventListener("jobpilot:tracked", () => loadJobs());
@@ -268,8 +344,29 @@
     });
   }
 
+  function applyUrlFilters() {
+    const params = new URLSearchParams(window.location.search);
+    const set = (selector, value) => {
+      const element = $(selector);
+      if (element && value !== null) element.value = value;
+    };
+    set("#job-search", params.get("q"));
+    set("#job-location", params.get("location"));
+    set("#job-remote", params.get("remote"));
+    set("#job-source", params.get("source"));
+    set("#job-posted", params.get("posted"));
+    set("#job-sort", params.get("sort"));
+    const score = params.get("min_score");
+    if (score) {
+      set("#job-min-score", score);
+      const label = $("#min-score-label");
+      if (label) label.textContent = Number(score) ? `${score}+` : "any";
+    }
+  }
+
   async function init() {
     bind();
+    applyUrlFilters();
     await loadJobs();
     const jobId = new URLSearchParams(window.location.search).get("job");
     if (jobId) JP.openJob(jobId);

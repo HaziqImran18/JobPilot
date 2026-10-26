@@ -13,12 +13,15 @@ from jobpilot.pipelines.extract import dedupe, to_job
 from jobpilot.sources.arbeitnow import ArbeitnowAdapter
 from jobpilot.sources.base import ProbeResult, SourceAdapter
 from jobpilot.sources.himalayas import HimalayasAdapter
+from jobpilot.sources.indeed import IndeedAdapter
 from jobpilot.sources.jobicy import JobicyAdapter
 from jobpilot.sources.linkedin import LinkedInAdapter
 from jobpilot.sources.manual import ManualAdapter
+from jobpilot.sources.mustakbil import MustakbilAdapter
 from jobpilot.sources.remoteok import RemoteOKAdapter
 from jobpilot.sources.remotive import RemotiveAdapter
 from jobpilot.sources.rss import RSSAdapter
+from jobpilot.sources.talent import TalentAdapter
 
 
 @dataclass
@@ -56,6 +59,9 @@ class SourceRegistry:
             HimalayasAdapter(self.settings),
             RSSAdapter(self.settings),
             LinkedInAdapter(self.settings),
+            MustakbilAdapter(self.settings),
+            TalentAdapter(self.settings),
+            IndeedAdapter(self.settings),
         ]
         self.manual = ManualAdapter(self.settings)
 
@@ -77,7 +83,7 @@ class SourceRegistry:
             return report
 
         results: dict[str, list[RawJob]] = {}
-        with ThreadPoolExecutor(max_workers=min(6, len(adapters))) as pool:
+        with ThreadPoolExecutor(max_workers=min(10, len(adapters))) as pool:
             futures = {adapter.name: pool.submit(adapter.fetch, query) for adapter in adapters}
             for name, future in futures.items():
                 try:
@@ -100,8 +106,9 @@ class SourceRegistry:
         return report
 
     def probe_all(self, timeout: float = 12.0) -> list[ProbeResult]:
-        # Disabled adapters are not failures. LinkedIn stays out of the health
-        # report by policy; the free API sources are always enabled by default.
+        # Disabled adapters are not failures. Every enabled adapter is probed;
+        # boards that block automated access (Indeed, Rozee, Bayt) report the
+        # block here instead of silently disappearing from the source list.
         adapters = [*self.enabled_adapters(), self.manual]
         results: list[ProbeResult] = []
         with ThreadPoolExecutor(max_workers=len(adapters)) as pool:
