@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon %}
+{% block content %}
+<div class="page-stack">
+  <section class="stat-strip" id="job-stats">
+    <div class="stat-cell">
+      <span class="stat-label">Stored postings</span>
+      <strong class="stat-value" id="stat-jobs">—</strong>
+      <span class="stat-foot" id="stat-jobs-foot">Across every source</span>
+    </div>
+    <div class="stat-cell">
+      <span class="stat-label">Live sources</span>
+      <strong class="stat-value" id="stat-sources">—</strong>
+      <span class="stat-foot">Free boards + RSS</span>
+    </div>
+    <div class="stat-cell">
+      <span class="stat-label">Remote-friendly</span>
+      <strong class="stat-value" id="stat-remote">—</strong>
+      <span class="stat-foot">Worldwide or async</span>
+    </div>
+    <div class="stat-cell">
+      <span class="stat-label">Scored</span>
+      <strong class="stat-value" id="stat-scored">—</strong>
+      <span class="stat-foot" id="stat-scored-foot">Hybrid rubric</span>
+    </div>
+  </section>
+
+  <section class="panel filter-panel">
+    <div class="filter-grid">
+      <label class="field field-search">
+        <span>Search</span>
+        <div class="input-with-icon">
+          {{ icon("search", 16) }}
+          <input type="search" id="job-search" placeholder="Title, company, skill…" autocomplete="off">
+        </div>
+      </label>
+      <label class="field">
+        <span>Location</span>
+        <input type="text" id="job-location" placeholder="Islamabad, Pakistan">
+      </label>
+      <label class="field">
+        <span>Work mode</span>
+        <select id="job-remote">
+          <option value="">Any</option>
+          <option value="true">Remote only</option>
+          <option value="false">On-site / hybrid</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Source</span>
+        <select id="job-source">
+          <option value="">All sources</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Sort</span>
+        <select id="job-sort">
+          <option value="newest">Newest first</option>
+          <option value="score">Best match</option>
+          <option value="salary">Salary</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Min score · <b id="min-score-label">any</b></span>
+        <input type="range" id="job-min-score" min="0" max="95" step="5" value="0">
+      </label>
+    </div>
+    <div class="filter-actions">
+      <div class="filter-note" id="filter-note">{{ icon("filter", 14) }} <span>Filters apply instantly to stored jobs.</span></div>
+      <div class="button-row">
+        <button class="btn btn-ghost btn-sm" id="import-job-btn">{{ icon("link", 15) }} Import URL</button>
+        <button class="btn btn-secondary btn-sm" id="rank-jobs-btn">{{ icon("sparkles", 15) }} Rank matches</button>
+        <button class="btn btn-primary btn-sm" id="refresh-jobs-btn">{{ icon("refresh", 15) }} Fetch fresh jobs</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-head">
+    <div>
+      <h2>Postings</h2>
+      <p id="jobs-summary">Loading your board…</p>
+    </div>
+    <div class="view-tools">
+      <span class="sync-note" id="jobs-sync"><span class="status-dot"></span> Ready</span>
+    </div>
+  </div>
+
+  <section class="job-grid" id="job-grid" aria-live="polite">
+    <div class="skeleton-card"></div>
+    <div class="skeleton-card"></div>
+    <div class="skeleton-card"></div>
+  </section>
+
+  <div class="empty-state roomy" id="jobs-empty" hidden>
+    <span class="empty-icon">{{ icon("briefcase", 30) }}</span>
+    <h3>No postings yet</h3>
+    <p>Fetch jobs from the free sources. Every posting comes from a live job board.</p>
+    <div class="button-row">
+      <button class="btn btn-primary" data-empty-action="refresh">{{ icon("refresh", 16) }} Fetch fresh jobs</button>
+    </div>
+  </div>
+
+  <div class="load-more-row" id="load-more-row" hidden>
+    <button class="btn btn-ghost" id="load-more-btn">Load more postings</button>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/jobs.js', v=app_version) }}"></script>{% endblock %}

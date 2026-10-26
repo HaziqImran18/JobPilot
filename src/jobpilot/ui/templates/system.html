@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon %}
+{% block content %}
+<div class="page-stack">
+  <section class="stat-strip">
+    <div class="stat-cell">
+      <span class="stat-label">Runtime mode</span>
+      <strong class="stat-value small" id="sys-mode">—</strong>
+      <span class="stat-foot" id="sys-mode-foot">Checking configuration</span>
+    </div>
+    <div class="stat-cell">
+      <span class="stat-label">Model spend today</span>
+      <strong class="stat-value small" id="sys-spend">—</strong>
+      <div class="meter"><span id="sys-spend-bar"></span></div>
+    </div>
+    <div class="stat-cell">
+      <span class="stat-label">Database</span>
+      <strong class="stat-value small" id="sys-db">—</strong>
+      <span class="stat-foot" id="sys-db-foot">SQLite · WAL</span>
+    </div>
+    <div class="stat-cell">
+      <span class="stat-label">MCP tools</span>
+      <strong class="stat-value" id="sys-tools">—</strong>
+      <span class="stat-foot" id="sys-tools-foot">Across 6 servers</span>
+    </div>
+  </section>
+
+  <div class="section-head">
+    <div>
+      <h2>Health checks</h2>
+      <p>Deterministic checks with live probes when you ask for them.</p>
+    </div>
+    <div class="button-row">
+      <button class="btn btn-ghost btn-sm" id="doctor-quick">{{ icon("zap", 15) }} Quick check</button>
+      <button class="btn btn-ghost btn-sm" id="doctor-sources">{{ icon("activity", 15) }} Probe sources</button>
+      <button class="btn btn-ghost btn-sm" id="doctor-mcp">{{ icon("cpu", 15) }} Test MCP</button>
+      <button class="btn btn-secondary btn-sm" id="doctor-full">{{ icon("shield", 15) }} Full check</button>
+    </div>
+  </div>
+  <section class="check-grid" id="check-grid">
+    <div class="skeleton-card"></div>
+    <div class="skeleton-card"></div>
+  </section>
+
+  <div class="two-col">
+    <section class="panel">
+      <div class="panel-heading">
+        <div><h3>Source health</h3><p>Last probe results, cached in SQLite.</p></div>
+        <span class="badge badge-ghost" id="source-count">—</span>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="source-table">
+          <thead><tr><th>Source</th><th>Status</th><th>Latency</th><th>Detail</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <div><h3>Budget</h3><p>Hard cap enforced by the LLM gateway.</p></div>
+        <span class="badge badge-ghost">{{ icon("lock", 12) }} hard stop</span>
+      </div>
+      <div class="budget-block">
+        <div class="budget-numbers">
+          <strong id="budget-spend">$0.0000</strong>
+          <span id="budget-cap">of $0.00</span>
+        </div>
+        <div class="meter large"><span id="budget-bar"></span></div>
+        <div class="budget-meta">
+          <span id="budget-calls">0 calls today</span>
+          <span id="budget-remaining">—</span>
+        </div>
+      </div>
+      <div class="settings-list" id="settings-list"></div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <div class="panel-heading">
+      <div><h3>Run traces</h3><p>Every step, tool call and approval, stored as JSONL.</p></div>
+      <button class="btn btn-ghost btn-sm" id="refresh-traces">{{ icon("refresh", 15) }} Refresh</button>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table" id="trace-table">
+        <thead><tr><th>Run</th><th>Session</th><th>Started</th><th>Steps</th><th>Status</th><th>Cost</th><th></th></tr></thead>
+        <tbody><tr><td colspan="7" class="table-empty">Loading traces…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-heading">
+      <div><h3>Model usage</h3><p>Tokens and cost per request, with cache hits marked.</p></div>
+      <span class="badge badge-ghost" id="usage-count">—</span>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table" id="usage-table">
+        <thead><tr><th>Time</th><th>Run</th><th>Model</th><th>Tokens</th><th>Cost</th><th>Cache</th></tr></thead>
+        <tbody><tr><td colspan="6" class="table-empty">Loading usage…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/system.js', v=app_version) }}"></script>{% endblock %}

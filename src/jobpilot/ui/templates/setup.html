@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Setup · JobPilot</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
+  <script src="{{ url_for('static', filename='js/theme.js') }}?v={{ app_version }}" defer></script>
+</head>
+<body class="setup-body">
+  <main class="setup-card">
+    <a class="brand setup-brand" href="{{ url_for('views.setup') }}">
+      <span class="brand-mark">JP</span>
+      <span class="brand-text">JobPilot<small>MCP agent</small></span>
+    </a>
+
+    <span class="badge badge-warning">Setup required</span>
+    <h1>Connect the AI model</h1>
+    <p class="setup-lede">
+      JobPilot needs a real model. Add an OpenAI API key once and restart the
+      server. Every answer is generated live; there is no offline planner.
+    </p>
+
+    <ol class="setup-steps">
+      <li>
+        <strong>Create a key</strong>
+        <span>Open <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">platform.openai.com/api-keys</a> and create a secret key. API billing is separate from ChatGPT Plus.</span>
+      </li>
+      <li>
+        <strong>Open <code>.env</code></strong>
+        <span>It sits in the project root, next to <code>.env.example</code>.</span>
+      </li>
+      <li>
+        <strong>Paste the key</strong>
+        <span>The line should look like the example below. Keep the file private.</span>
+      </li>
+      <li>
+        <strong>Restart JobPilot</strong>
+        <span>Stop the server with <kbd>Ctrl</kbd> + <kbd>C</kbd>, then run <code>jobpilot serve --port 5055</code> again.</span>
+      </li>
+    </ol>
+
+    <pre class="setup-code"><code>OPENAI_API_KEY=sk-...
+JOBPILOT_MODEL_FAST=gpt-4o-mini
+JOBPILOT_MODEL_STRONG=gpt-4o
+JOBPILOT_DAILY_BUDGET_USD=1.00</code></pre>
+
+    <div class="setup-actions">
+      <a class="btn btn-primary" href="{{ url_for('views.setup') }}">I have added the key — reload</a>
+    </div>
+
+    <p class="setup-note">
+      The key is read from <code>.env</code> on startup. It is never displayed in the UI
+      and is excluded from git.
+    </p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon %}
+{% block content %}
+<div class="page-stack">
+  <section class="stat-strip">
+    <div class="stat-cell">
+      <span class="stat-label">Tracked roles</span>
+      <strong class="stat-value" id="app-stat-total">—</strong>
+      <span class="stat-foot">Across every column</span>
+    </div>
+    <div class="stat-cell">
+      <span class="stat-label">In progress</span>
+      <strong class="stat-value" id="app-stat-progress">—</strong>
+      <span class="stat-foot">Saved through interview</span>
+    </div>
+    <div class="stat-cell">
+      <span class="stat-label">Interviews</span>
+      <strong class="stat-value" id="app-stat-interviews">—</strong>
+      <span class="stat-foot">Active conversations</span>
+    </div>
+    <div class="stat-cell">
+      <span class="stat-label">Offers</span>
+      <strong class="stat-value" id="app-stat-offers">—</strong>
+      <span class="stat-foot">Negotiate carefully</span>
+    </div>
+  </section>
+
+  <div class="callout warning" id="followup-callout" hidden>
+    <span class="callout-icon">{{ icon("clock", 18) }}</span>
+    <div>
+      <strong>Follow-ups due</strong>
+      <p id="followup-text"></p>
+    </div>
+    <button class="icon-btn" id="dismiss-followups" aria-label="Dismiss">{{ icon("x", 16) }}</button>
+  </div>
+
+  <div class="section-head">
+    <div>
+      <h2>Pipeline</h2>
+      <p>Drag a card to move it between stages. Every change is written to the event log.</p>
+    </div>
+    <div class="button-row">
+      <button class="btn btn-ghost btn-sm" id="refresh-board">{{ icon("refresh", 15) }} Refresh</button>
+      <button class="btn btn-primary btn-sm" id="add-application">{{ icon("plus", 15) }} Add application</button>
+    </div>
+  </div>
+
+  <section class="board" id="application-board" aria-live="polite">
+    <div class="board-loading">Loading pipeline…</div>
+  </section>
+
+  <div class="empty-state roomy" id="applications-empty" hidden>
+    <span class="empty-icon">{{ icon("kanban", 30) }}</span>
+    <h3>Your pipeline is empty</h3>
+    <p>Save a role from the job board or chat, then move it through applied, interview and offer.</p>
+    <div class="button-row">
+      <a class="btn btn-primary" href="{{ url_for('views.jobs_page') }}">{{ icon("briefcase", 16) }} Browse jobs</a>
+      <button class="btn btn-ghost" id="empty-add-application">{{ icon("plus", 16) }} Add manually</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/applications.js', v=app_version) }}"></script>{% endblock %}

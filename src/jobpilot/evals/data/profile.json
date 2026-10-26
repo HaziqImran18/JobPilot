@@ -1,0 +1,127 @@
+{
+  "full_name": "Eval Candidate",
+  "headline": "AI Engineer building production LLM systems",
+  "email": "eval.candidate@example.com",
+  "phone": "+92 300 1234567",
+  "location": "Islamabad, Pakistan",
+  "links": {
+    "github": "https://github.com/hamza-ahmed",
+    "linkedin": "https://linkedin.com/in/hamza-ahmed",
+    "portfolio": "https://hamza.example.com"
+  },
+  "summary": "Entry-level AI engineer with 1.5 years of experience shipping retrieval-augmented LLM applications. Comfortable across the stack: FastAPI services, evaluation harnesses, vector search and clean data pipelines. Looking for a product team where I can own agent reliability end to end.",
+  "preferences": {
+    "target_roles": ["AI Engineer", "Machine Learning Engineer", "LLM Engineer"],
+    "locations": ["Islamabad", "Rawalpindi", "Remote"],
+    "remote_preferred": true,
+    "onsite_ok": true,
+    "salary_floor": 150000,
+    "currency": "PKR",
+    "salary_period": "month",
+    "seniority": "entry",
+    "excluded_companies": ["Outlier", "Turing"],
+    "excluded_keywords": ["unpaid", "commission only", "cold calling"],
+    "skills_to_avoid": [],
+    "work_authorization": "Pakistan, no sponsorship required",
+    "notes": "Prefer small product teams. Open to remote roles overlapping 4+ hours with PKT."
+  },
+  "experiences": [
+    {
+      "id": "exp_nexora",
+      "company": "Nexora Labs",
+      "title": "Junior AI Engineer",
+      "start_date": "2025-07",
+      "end_date": "",
+      "location": "Islamabad, Pakistan",
+      "bullets": [
+        "Built a FastAPI retrieval service over 12,000 internal documents using LangChain and OpenAI embeddings, serving 300 queries per day.",
+        "Cut median retrieval latency by 42% by adding a Redis cache and batching embedding requests.",
+        "Wrote an evaluation harness with 120 labelled queries that raised answer accuracy from 71% to 89%.",
+        "Added Pydantic validation, structured logging and retry handling to the LLM pipeline."
+      ],
+      "skills": ["Python", "FastAPI", "LangChain", "OpenAI API", "Redis", "Pydantic"],
+      "is_current": true
+    },
+    {
+      "id": "exp_dataforge",
+      "company": "DataForge",
+      "title": "Machine Learning Intern",
+      "start_date": "2024-06",
+      "end_date": "2024-09",
+      "location": "Remote",
+      "bullets": [
+        "Trained a scikit-learn churn model on 50,000 customer records, reaching 0.86 ROC-AUC.",
+        "Built pandas preprocessing pipelines that reduced feature preparation time from 3 hours to 20 minutes.",
+        "Presented weekly experiment results to a 6-person product team."
+      ],
+      "skills": ["Python", "scikit-learn", "Pandas", "SQL"],
+      "is_current": false
+    },
+    {
+      "id": "exp_freelance",
+      "company": "Independent",
+      "title": "Freelance Backend Developer",
+      "start_date": "2023-01",
+      "end_date": "2024-05",
+      "location": "Remote",
+      "bullets": [
+        "Delivered four Flask and PostgreSQL APIs for small businesses, with pytest coverage above 80%.",
+        "Automated weekly CSV reporting with Python, saving roughly 6 hours of manual work per week."
+      ],
+      "skills": ["Python", "Flask", "PostgreSQL", "pytest"],
+      "is_current": false
+    }
+  ],
+  "education": [
+    {
+      "id": "edu_nust",
+      "institution": "National University of Sciences and Technology (NUST)",
+      "degree": "BS Computer Science",
+      "field_of_study": "Computer Science",
+      "start_date": "2021-09",
+      "end_date": "2025-06",
+      "details": "CGPA 3.6/4.0. Final year project: an MCP-powered job search agent with a claim verifier."
+    }
+  ],
+  "projects": [
+    {
+      "id": "prj_jobpilot",
+      "name": "JobPilot",
+      "description": "An MCP-powered job agent with typed tools, persistent memory, permission tiers and a claim verifier for tailored CVs.",
+      "url": "https://github.com/hamza-ahmed/jobpilot",
+      "skills": ["Python", "MCP", "FastAPI", "SQLite", "OpenAI API"]
+    },
+    {
+      "id": "prj_rag",
+      "name": "Research Assistant RAG",
+      "description": "A retrieval-augmented assistant over 3,000 arXiv papers with citation checks and a 40-question evaluation set.",
+      "url": "https://github.com/hamza-ahmed/rag-assistant",
+      "skills": ["Python", "LangChain", "Chroma", "Streamlit"]
+    },
+    {
+      "id": "prj_urdu",
+      "name": "Urdu Sentiment Classifier",
+      "description": "Fine-tuned a multilingual transformer on 18,000 Urdu reviews, reaching 0.88 macro F1.",
+      "url": "",
+      "skills": ["PyTorch", "Hugging Face", "Pandas"]
+    }
+  ],
+  "skills": [
+    { "name": "Python", "level": 5, "years": 3, "category": "language" },
+    { "name": "SQL", "level": 4, "years": 3, "category": "language" },
+    { "name": "PyTorch", "level": 4, "years": 2, "category": "ml" },
+    { "name": "scikit-learn", "level": 4, "years": 2, "category": "ml" },
+    { "name": "Pandas", "level": 4, "years": 2, "category": "ml" },
+    { "name": "FastAPI", "level": 5, "years": 2, "category": "backend" },
+    { "name": "Flask", "level": 4, "years": 2, "category": "backend" },
+    { "name": "LangChain", "level": 4, "years": 1.5, "category": "llm" },
+    { "name": "OpenAI API", "level": 4, "years": 1.5, "category": "llm" },
+    { "name": "MCP", "level": 3, "years": 1, "category": "llm" },
+    { "name": "PostgreSQL", "level": 3, "years": 2, "category": "database" },
+    { "name": "SQLite", "level": 4, "years": 2, "category": "database" },
+    { "name": "Docker", "level": 3, "years": 1, "category": "devops" },
+    { "name": "Git", "level": 4, "years": 3, "category": "tooling" },
+    { "name": "pytest", "level": 4, "years": 2, "category": "testing" },
+    { "name": "React", "level": 3, "years": 1, "category": "frontend" }
+  ]
+}

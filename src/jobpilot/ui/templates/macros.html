@@ -1,0 +1,15 @@
+{% macro icon(name, size=20, cls="") -%}
+<svg class="icon {{ cls }}" width="{{ size }}" height="{{ size }}" aria-hidden="true"><use href="#i-{{ name }}"></use></svg>
+{%- endmacro %}
+
+{% macro badge(text, tone="neutral") -%}
+<span class="badge badge-{{ tone }}">{{ text }}</span>
+{%- endmacro %}
+
+{% macro empty_state(icon_name, title, text) -%}
+<div class="empty-state">
+  <span class="empty-icon">{{ icon(icon_name, 28) }}</span>
+  <h3>{{ title }}</h3>
+  <p>{{ text }}</p>
+</div>
+{%- endmacro %}

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Create account — JobPilot</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg', v=app_version) }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v=app_version) }}">
+  <script src="{{ url_for('static', filename='js/theme.js', v=app_version) }}" defer></script>
+</head>
+<body class="setup-body">
+  <main class="setup-card auth-card">
+    <a class="brand setup-brand" href="{{ url_for('views.register_page') }}">
+      <span class="brand-mark">JP</span>
+      <span class="brand-text">JobPilot<small>MCP agent</small></span>
+    </a>
+
+    <span class="badge badge-mode">{{ 'First account' if first_run else 'New account' }}</span>
+    <h1>{{ 'Create your workspace' if first_run else 'Create an account' }}</h1>
+    <p class="setup-lede">
+      {% if first_run %}
+        This is the first account on this server. Each account gets its own private
+        profile, job board, chats, memory and application tracker.
+      {% else %}
+        Your workspace is separate from every other account on this server.
+      {% endif %}
+    </p>
+
+    {% if error %}<div class="auth-error" role="alert">{{ error }}</div>{% endif %}
+
+    <form method="post" action="{{ url_for('views.register_page') }}" class="auth-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label class="field"><span>Your name</span>
+        <input type="text" name="display_name" autocomplete="name" maxlength="80" required autofocus>
+      </label>
+      <label class="field"><span>Email</span>
+        <input type="email" name="email" autocomplete="email" required>
+      </label>
+      <label class="field"><span>Password</span>
+        <input type="password" name="password" autocomplete="new-password" minlength="8" required>
+      </label>
+      <label class="field"><span>Confirm password</span>
+        <input type="password" name="password_confirm" autocomplete="new-password" minlength="8" required>
+      </label>
+      <button class="btn btn-primary" type="submit">Create account</button>
+    </form>
+
+    <p class="auth-switch">
+      Already have an account? <a href="{{ url_for('views.login_page') }}">Sign in</a>.
+    </p>
+    <p class="setup-note">
+      Passwords are stored as salted hashes. Add your real details on the Profile
+      page after signing in — JobPilot never invents a profile for you.
+    </p>
+  </main>
+</body>
+</html>

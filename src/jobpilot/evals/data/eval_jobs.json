@@ -1,0 +1,308 @@
+[
+  {
+    "source": "eval",
+    "external_id": "eval-ai-engineer-trellis",
+    "title": "AI Engineer",
+    "company": "Trellis AI",
+    "url": "",
+    "description": "Trellis AI is looking for an entry-level AI Engineer to build retrieval-augmented\nassistants for enterprise customers. You will work with Python, FastAPI and LangChain,\ndesign evaluation sets, and improve answer quality with prompt engineering and retrieval\ntuning.\n\nResponsibilities\n- Build and maintain RAG pipelines over customer documents using Python and vector databases.\n- Ship internal APIs with FastAPI and Pydantic, including tests and structured logging.\n- Run evaluations, analyse failure cases and iterate on prompts.\n- Work with product and design to turn customer requests into reliable features.\n\nRequirements\n- 1+ years of Python experience, ideally with FastAPI or Flask.\n- Familiarity with LLMs, embeddings and vector search.\n- Solid SQL skills and comfort with Git.\n- Based in Islamabad or willing to work hybrid three days per week.\n\nNice to have: MCP, Docker, Redis, experience with evaluation harnesses.",
+    "location": "Islamabad, Pakistan",
+    "remote": false,
+    "employment_type": "full-time",
+    "salary": {
+      "minimum": 180000.0,
+      "maximum": 260000.0,
+      "currency": "PKR",
+      "period": "month"
+    },
+    "posted_at": "2026-10-25T07:46:13+00:00",
+    "tags": [
+      "Python",
+      "FastAPI",
+      "LangChain",
+      "RAG",
+      "LLM",
+      "SQL",
+      "Git"
+    ],
+    "raw": {
+      "sample": true
+    }
+  },
+  {
+    "source": "eval",
+    "external_id": "eval-llm-engineer-byteSpring",
+    "title": "LLM Engineer (Remote)",
+    "company": "ByteSpring",
+    "url": "",
+    "description": "ByteSpring builds developer tools for AI teams. We are hiring an LLM Engineer to own\nour agent runtime: tool calling, context management, memory and safety guardrails.\n\nWhat you will do\n- Design typed tools and MCP servers that connect models to internal systems.\n- Improve context assembly, compaction and prompt caching to reduce cost and latency.\n- Build guardrails for prompt injection and unsupported claims.\n- Instrument traces and evaluate agent behaviour on labelled tasks.\n\nWhat we expect\n- Strong Python and API design skills (FastAPI or similar).\n- Hands-on experience with OpenAI models, LangChain or LlamaIndex.\n- Understanding of embeddings, SQLite or PostgreSQL, and Docker.\n- Clear writing; this role is remote and async-first.\n\nWe care about reliability more than model trivia. Salary is benchmarked to your location.",
+    "location": "Remote (Worldwide)",
+    "remote": true,
+    "employment_type": "full-time",
+    "salary": {
+      "minimum": 3000.0,
+      "maximum": 5000.0,
+      "currency": "USD",
+      "period": "month"
+    },
+    "posted_at": "2026-10-24T07:46:13+00:00",
+    "tags": [
+      "Python",
+      "LLM",
+      "MCP",
+      "FastAPI",
+      "OpenAI API",
+      "RAG",
+      "Docker",
+      "PostgreSQL"
+    ],
+    "raw": {
+      "sample": true
+    }
+  },
+  {
+    "source": "eval",
+    "external_id": "eval-ml-engineer-falcon",
+    "title": "Machine Learning Engineer",
+    "company": "Falcon Analytics",
+    "url": "",
+    "description": "Falcon Analytics turns operational data into forecasting products. Join our ML team to\ntrain, evaluate and deploy models that support supply-chain decisions.\n\nYou will\n- Build supervised models with scikit-learn and PyTorch on tabular and time-series data.\n- Write reproducible pandas pipelines and feature definitions.\n- Evaluate models with cross-validation and A/B testing.\n- Deploy batch and real-time inference services with FastAPI and Docker.\n\nYou bring\n- 1-3 years of applied ML experience or a strong portfolio of projects.\n- Python, pandas, SQL and Git fluency.\n- Ability to explain model trade-offs to non-technical stakeholders.\n\nOnsite in Lahore with one remote day per week.",
+    "location": "Lahore, Pakistan",
+    "remote": false,
+    "employment_type": "full-time",
+    "salary": {
+      "minimum": 160000.0,
+      "maximum": 240000.0,
+      "currency": "PKR",
+      "period": "month"
+    },
+    "posted_at": "2026-10-23T07:46:13+00:00",
+    "tags": [
+      "Python",
+      "scikit-learn",
+      "PyTorch",
+      "Pandas",
+      "SQL",
+      "FastAPI",
+      "Docker"
+    ],
+    "raw": {
+      "sample": true
+    }
+  },
+  {
+    "source": "eval",
+    "external_id": "eval-rag-engineer-cloudmeadow",
+    "title": "RAG Engineer",
+    "company": "CloudMeadow",
+    "url": "",
+    "description": "CloudMeadow is a documentation platform used by 4,000 teams. We need an engineer to\nmake search and question answering excellent across large knowledge bases.\n\nFocus areas\n- Chunking, embedding and retrieval strategies using OpenAI embeddings and pgvector.\n- Re-ranking and citation quality for generated answers.\n- Evaluation with labelled question sets and regression tracking.\n- Cost and latency optimisation, including caching and batching.\n\nRequirements\n- Python and SQL experience; FastAPI is a plus.\n- Familiarity with LangChain or LlamaIndex and at least one vector database.\n- You have shipped an LLM feature to real users.\n\nFully remote. We overlap four hours with CET.",
+    "location": "Remote (Europe / Asia)",
+    "remote": true,
+    "employment_type": "full-time",
+    "salary": {
+      "minimum": 3500.0,
+      "maximum": 5500.0,
+      "currency": "USD",
+      "period": "month"
+    },
+    "posted_at": "2026-10-22T07:46:13+00:00",
+    "tags": [
+      "Python",
+      "RAG",
+      "OpenAI API",
+      "Vector Database",
+      "SQL",
+      "LangChain",
+      "Evaluation"
+    ],
+    "raw": {
+      "sample": true
+    }
+  },
+  {
+    "source": "eval",
+    "external_id": "eval-junior-genai-northstar",
+    "title": "Junior Generative AI Developer",
+    "company": "Northstar Health",
+    "url": "",
+    "description": "Northstar Health is improving how clinicians find internal policy information. This is\nan entry-level role for someone who can write clean Python and has built an LLM project\nend to end.\n\nYou will\n- Prototype assistants with Python, OpenAI API and LangChain.\n- Help maintain our evaluation harness in pytest.\n- Annotate and review outputs with the clinical operations team.\n- Fix retrieval bugs and improve prompts using logged failure cases.\n\nRequirements\n- BS in Computer Science or equivalent.\n- One substantial LLM or ML project you can explain in depth.\n- Working knowledge of SQL and Git.\n- Understanding of data privacy basics.\n\nHybrid role in Rawalpindi. Health benefits and a learning budget.",
+    "location": "Rawalpindi, Pakistan",
+    "remote": false,
+    "employment_type": "full-time",
+    "salary": {
+      "minimum": 120000.0,
+      "maximum": 180000.0,
+      "currency": "PKR",
+      "period": "month"
+    },
+    "posted_at": "2026-10-21T07:46:13+00:00",
+    "tags": [
+      "Python",
+      "LLM",
+      "OpenAI API",
+      "LangChain",
+      "pytest",
+      "SQL",
+      "Git"
+    ],
+    "raw": {
+      "sample": true
+    }
+  },
+  {
+    "source": "eval",
+    "external_id": "eval-mlops-indus",
+    "title": "MLOps Engineer",
+    "company": "Indus Data",
+    "url": "",
+    "description": "Indus Data runs data products for logistics companies. We are looking for an MLOps\nEngineer to make model delivery boring and repeatable.\n\nScope\n- Package training and inference code with Docker and CI/CD.\n- Operate batch jobs on AWS (S3, ECS) and monitor data drift.\n- Build FastAPI inference endpoints with Pydantic validation.\n- Improve experiment tracking and model documentation.\n\nMust have\n- Python, Linux and Git experience.\n- One cloud platform (AWS preferred) and Docker.\n- SQL and a habit of writing tests.\n\nNice to have: Airflow, Kubernetes, PyTorch. Onsite in Karachi, relocation support available.",
+    "location": "Karachi, Pakistan",
+    "remote": false,
+    "employment_type": "full-time",
+    "salary": {
+      "minimum": 200000.0,
+      "maximum": 300000.0,
+      "currency": "PKR",
+      "period": "month"
+    },
+    "posted_at": "2026-10-20T07:46:13+00:00",
+    "tags": [
+      "Python",
+      "MLOps",
+      "Docker",
+      "AWS",
+      "CI/CD",
+      "FastAPI",
+      "SQL",
+      "Linux"
+    ],
+    "raw": {
+      "sample": true
+    }
+  },
+  {
+    "source": "eval",
+    "external_id": "eval-cv-engineer-karachi-robotics",
+    "title": "Computer Vision Engineer",
+    "company": "Karachi Robotics",
+    "url": "",
+    "description": "Karachi Robotics builds inspection software for manufacturing lines. Our next engineer\nwill improve defect detection models and the pipeline that serves them.\n\nResponsibilities\n- Train and evaluate PyTorch vision models on industrial image datasets.\n- Build data labelling and augmentation workflows with Python and OpenCV.\n- Deploy inference services with FastAPI and Docker.\n- Track metrics and error slices with the quality team.\n\nRequirements\n- 1+ years of computer vision experience or strong academic projects.\n- PyTorch, NumPy and Python proficiency.\n- Comfort with Linux and Git.\n- Bonus: MLOps, AWS, model quantisation.\n\nRemote within Pakistan with quarterly onsite workshops.",
+    "location": "Remote",
+    "remote": true,
+    "employment_type": "full-time",
+    "salary": {
+      "minimum": 170000.0,
+      "maximum": 250000.0,
+      "currency": "PKR",
+      "period": "month"
+    },
+    "posted_at": "2026-10-19T07:46:13+00:00",
+    "tags": [
+      "Python",
+      "PyTorch",
+      "Computer Vision",
+      "NumPy",
+      "FastAPI",
+      "Docker",
+      "Linux",
+      "Git"
+    ],
+    "raw": {
+      "sample": true
+    }
+  },
+  {
+    "source": "eval",
+    "external_id": "eval-ai-intern-nexora2",
+    "title": "AI Engineering Intern",
+    "company": "Nexora Labs",
+    "url": "",
+    "description": "Nexora Labs is hiring two AI Engineering interns for a six-month programme. You will\njoin the retrieval team and work on real customer deployments.\n\nWhat you will learn\n- Building RAG pipelines with Python, LangChain and vector search.\n- Writing FastAPI endpoints with Pydantic schemas.\n- Measuring answer quality with small evaluation sets.\n- Shipping code through Git and code review.\n\nRequirements\n- Final-year CS student or recent graduate.\n- Python project experience; LLM coursework or a personal project is a plus.\n- Basic SQL and Git.\n- Available for a paid internship, three days onsite in Islamabad.\n\nThis role is a good fit for candidates with less than one year of professional experience.",
+    "location": "Islamabad, Pakistan",
+    "remote": false,
+    "employment_type": "full-time",
+    "salary": {
+      "minimum": 50000.0,
+      "maximum": 70000.0,
+      "currency": "PKR",
+      "period": "month"
+    },
+    "posted_at": "2026-10-18T07:46:13+00:00",
+    "tags": [
+      "Python",
+      "LangChain",
+      "RAG",
+      "FastAPI",
+      "SQL",
+      "Git",
+      "LLM"
+    ],
+    "raw": {
+      "sample": true
+    }
+  },
+  {
+    "source": "eval",
+    "external_id": "eval-python-backend-xprolix",
+    "title": "Python Backend Engineer (AI Products)",
+    "company": "Xprolix",
+    "url": "",
+    "description": "Xprolix builds AI content tools used by marketing teams. We need a backend engineer\nwho enjoys clean APIs and reliable background jobs.\n\nYou will\n- Build Flask and FastAPI services, backed by PostgreSQL.\n- Integrate OpenAI API calls with retries, caching and cost controls.\n- Write tests with pytest and ship through GitHub Actions.\n- Improve observability with structured logs and traces.\n\nRequirements\n- 1-3 years of Python backend experience.\n- Strong SQL, Git and testing habits.\n- Experience with Docker is a plus.\n- Fluent written English for a remote team.\n\nRemote-first, flexible hours, hardware budget.",
+    "location": "Remote (Asia)",
+    "remote": true,
+    "employment_type": "full-time",
+    "salary": {
+      "minimum": 2000.0,
+      "maximum": 3200.0,
+      "currency": "USD",
+      "period": "month"
+    },
+    "posted_at": "2026-10-17T07:46:13+00:00",
+    "tags": [
+      "Python",
+      "FastAPI",
+      "Flask",
+      "PostgreSQL",
+      "SQL",
+      "pytest",
+      "OpenAI API",
+      "Docker",
+      "Git"
+    ],
+    "raw": {
+      "sample": true
+    }
+  },
+  {
+    "source": "eval",
+    "external_id": "eval-data-scientist-apricot",
+    "title": "Data Scientist",
+    "company": "Apricot Insights",
+    "url": "",
+    "description": "Apricot Insights helps retailers understand demand. We are adding a data scientist to\nour small analytics team.\n\nYou will\n- Analyse transaction data with Python, pandas and SQL.\n- Build forecasting and segmentation models with scikit-learn.\n- Present findings with clear charts and recommendations.\n- Partner with engineers to productionise models.\n\nRequirements\n- 1+ years of analytics experience.\n- Statistics fundamentals and A/B testing.\n- Python, SQL and Excel.\n- Power BI or Tableau is a plus.\n\nOnsite in Islamabad, five days per week.",
+    "location": "Islamabad, Pakistan",
+    "remote": false,
+    "employment_type": "full-time",
+    "salary": {
+      "minimum": 130000.0,
+      "maximum": 190000.0,
+      "currency": "PKR",
+      "period": "month"
+    },
+    "posted_at": "2026-10-16T07:46:13+00:00",
+    "tags": [
+      "Python",
+      "Pandas",
+      "SQL",
+      "Statistics",
+      "scikit-learn",
+      "A/B Testing",
+      "Excel",
+      "Power BI"
+    ],
+    "raw": {
+      "sample": true
+    }
+  }
+]

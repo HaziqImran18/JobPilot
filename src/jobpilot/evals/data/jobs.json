@@ -1,0 +1,78 @@
+{
+  "name": "eval-ai-engineer-fit",
+  "query": "AI Engineer",
+  "description": "Ten clearly-labelled synthetic roles, hand-graded for an entry-level AI engineer in Islamabad who prefers remote-first teams. Relevance 3 = strong fit, 2 = worth applying, 1 = adjacent.",
+  "jobs": [
+    {
+      "external_id": "eval-ai-engineer-trellis",
+      "title": "AI Engineer",
+      "company": "Trellis AI",
+      "relevance": 3,
+      "ideal_score": 84
+    },
+    {
+      "external_id": "eval-llm-engineer-byteSpring",
+      "title": "LLM Engineer (Remote)",
+      "company": "ByteSpring",
+      "relevance": 3,
+      "ideal_score": 79
+    },
+    {
+      "external_id": "eval-python-backend-xprolix",
+      "title": "Python Backend Engineer (AI Products)",
+      "company": "Xprolix",
+      "relevance": 3,
+      "ideal_score": 76
+    },
+    {
+      "external_id": "eval-rag-engineer-cloudmeadow",
+      "title": "RAG Engineer",
+      "company": "CloudMeadow",
+      "relevance": 3,
+      "ideal_score": 74
+    },
+    {
+      "external_id": "eval-ai-intern-nexora2",
+      "title": "AI Engineering Intern",
+      "company": "Nexora Labs",
+      "relevance": 2,
+      "ideal_score": 70
+    },
+    {
+      "external_id": "eval-junior-genai-northstar",
+      "title": "Junior Generative AI Developer",
+      "company": "Northstar Health",
+      "relevance": 2,
+      "ideal_score": 68
+    },
+    {
+      "external_id": "eval-ml-engineer-falcon",
+      "title": "Machine Learning Engineer",
+      "company": "Falcon Analytics",
+      "relevance": 2,
+      "ideal_score": 58
+    },
+    {
+      "external_id": "eval-mlops-indus",
+      "title": "MLOps Engineer",
+      "company": "Indus Data",
+      "relevance": 1,
+      "ideal_score": 55
+    },
+    {
+      "external_id": "eval-cv-engineer-karachi-robotics",
+      "title": "Computer Vision Engineer",
+      "company": "Karachi Robotics",
+      "relevance": 1,
+      "ideal_score": 52
+    },
+    {
+      "external_id": "eval-data-scientist-apricot",
+      "title": "Data Scientist",
+      "company": "Apricot Insights",
+      "relevance": 1,
+      "ideal_score": 48
+    }
+  ]
+}
+

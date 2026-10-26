@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>{{ page_title }} · JobPilot</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg', v=app_version) }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v=app_version) }}">
+  <script src="{{ url_for('static', filename='js/theme.js', v=app_version) }}"></script>
+</head>
+<body data-page="{{ active_page }}">
+  {% include "partials/icons.html" %}
+  {% from "macros.html" import icon %}
+
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <a class="brand" href="{{ url_for('views.chat_page') }}">
+        <span class="brand-mark">{{ icon("target", 20) }}</span>
+        <span class="brand-text">JobPilot<small>MCP agent</small></span>
+      </a>
+
+      <nav class="nav">
+        <span class="nav-label">Workspace</span>
+        <a class="nav-item {{ 'active' if active_page == 'chat' }}" href="{{ url_for('views.chat_page') }}">
+          {{ icon("chat", 18) }} <span>Conversations</span>
+        </a>
+        <a class="nav-item {{ 'active' if active_page == 'jobs' }}" href="{{ url_for('views.jobs_page') }}">
+          {{ icon("briefcase", 18) }} <span>Job board</span>
+          <span class="nav-count" id="nav-jobs-count"></span>
+        </a>
+        <a class="nav-item {{ 'active' if active_page == 'applications' }}" href="{{ url_for('views.applications_page') }}">
+          {{ icon("kanban", 18) }} <span>Applications</span>
+          <span class="nav-count" id="nav-apps-count"></span>
+        </a>
+        <span class="nav-label">System</span>
+        <a class="nav-item {{ 'active' if active_page == 'memory' }}" href="{{ url_for('views.memory_page') }}">
+          {{ icon("cpu", 18) }} <span>Memory</span>
+          <span class="nav-count" id="nav-memory-count"></span>
+        </a>
+        <a class="nav-item {{ 'active' if active_page == 'profile' }}" href="{{ url_for('views.profile_page') }}">
+          {{ icon("user", 18) }} <span>Profile</span>
+        </a>
+        <a class="nav-item {{ 'active' if active_page == 'system' }}" href="{{ url_for('views.system_page') }}">
+          {{ icon("activity", 18) }} <span>System</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="mode-card" id="mode-card">
+          <span class="status-dot" id="mode-dot"></span>
+          <div class="mode-copy">
+            <strong id="mode-label">Connecting…</strong>
+            <small id="mode-detail">Local MCP runtime</small>
+          </div>
+          <a class="icon-link" href="{{ url_for('views.system_page') }}" title="System status">{{ icon("arrow-right", 16) }}</a>
+        </div>
+        <div class="user-card">
+          <span class="avatar" id="user-avatar">{{ current_user.initials if current_user else 'JP' }}</span>
+          <div class="user-copy">
+            <strong id="user-name">{{ current_user.display_name if current_user else 'Account' }}</strong>
+            <small id="user-headline">{{ current_user.email if current_user else '' }}</small>
+          </div>
+          {% if current_user %}
+          <form method="post" action="{{ url_for('views.logout') }}" class="logout-form">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button class="icon-btn" type="submit" title="Sign out" aria-label="Sign out">{{ icon("arrow-right", 15) }}</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </aside>
+    <div class="sidebar-scrim" id="sidebar-scrim"></div>
+
+    <div class="main">
+      <header class="topbar">
+        <button class="icon-btn mobile-only" id="menu-toggle" aria-label="Open navigation">{{ icon("menu", 20) }}</button>
+        <div class="topbar-title">
+          <h1>{{ page_title }}</h1>
+          <p>{{ page_subtitle }}</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="budget-pill" id="budget-pill" title="Today's model spend">
+            {{ icon("dollar", 14) }} <span id="budget-text">$0.0000</span>
+          </div>
+          <span class="badge badge-mode" id="top-mode-badge">Live</span>
+          <button class="icon-btn" id="theme-toggle" aria-label="Toggle theme" title="Toggle theme">{{ icon("sun", 18) }}</button>
+          <button class="btn btn-primary btn-sm" id="new-chat-top">
+            {{ icon("plus", 16) }} <span class="hide-sm">New chat</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="page {{ 'page-chat' if active_page == 'chat' }}">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toasts" aria-live="polite"></div>
+  <div class="modal-root" id="modal-root" hidden></div>
+
+  <script src="{{ url_for('static', filename='js/app.js', v=app_version) }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

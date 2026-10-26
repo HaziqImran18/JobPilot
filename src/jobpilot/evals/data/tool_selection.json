@@ -1,0 +1,26 @@
+[
+  {
+    "prompt": "Find AI Engineer jobs",
+    "expected_tools": ["rank_jobs"]
+  },
+  {
+    "prompt": "Tailor the top match",
+    "expected_tools": ["rank_jobs", "tailor_cv"]
+  },
+  {
+    "prompt": "Track the top match",
+    "expected_tools": ["rank_jobs", "add_application"]
+  },
+  {
+    "prompt": "What do you remember about my preferences?",
+    "expected_tools": ["list_memories"]
+  },
+  {
+    "prompt": "Remember that I prefer remote roles",
+    "expected_tools": ["remember"]
+  },
+  {
+    "prompt": "Mark the application submitted",
+    "expected_tools": ["list_applications", "mark_submitted"]
+  }
+]

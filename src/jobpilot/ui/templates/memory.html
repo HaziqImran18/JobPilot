@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon %}
+{% block content %}
+<div class="page-stack">
+  <div class="two-col align-start">
+    <section class="panel intro-panel">
+      <span class="eyebrow">Persistent memory</span>
+      <h2>What JobPilot carries forward</h2>
+      <p>
+        Explicit preferences are stored immediately. Inferred profile changes wait for your confirmation.
+        Memories are ranked by embedding similarity, recency and importance — never by hidden assumptions.
+      </p>
+      <div class="memory-rules">
+        <div class="rule">{{ icon("check", 15) }} <span>You can inspect, confirm or forget any memory.</span></div>
+        <div class="rule">{{ icon("check", 15) }} <span>Episodic notes capture what happened, not who you are.</span></div>
+        <div class="rule">{{ icon("check", 15) }} <span>Profile edits always win over stale memories.</span></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <div><h3>Add a memory</h3><p>Stored as explicit and active immediately.</p></div>
+      </div>
+      <form id="memory-form" class="stack-form">
+        <label class="field">
+          <span>Memory</span>
+          <textarea id="memory-text" rows="3" placeholder="e.g. I prefer product teams over agencies, and I will not relocate outside Pakistan." required></textarea>
+        </label>
+        <div class="grid-2">
+          <label class="field">
+            <span>Kind</span>
+            <select id="memory-kind">
+              <option value="semantic">Semantic — durable preference</option>
+              <option value="episodic">Episodic — something that happened</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Importance · <b id="memory-importance-label">0.7</b></span>
+            <input type="range" id="memory-importance" min="0" max="1" step="0.05" value="0.7">
+          </label>
+        </div>
+        <button class="btn btn-primary" type="submit">{{ icon("plus", 16) }} Save memory</button>
+      </form>
+    </section>
+  </div>
+
+  <section class="panel recall-panel">
+    <div class="panel-heading">
+      <div>
+        <h3>Recall preview</h3>
+        <p>Test exactly what the agent would retrieve for a query.</p>
+      </div>
+      <span class="badge badge-ghost">Hybrid ranking</span>
+    </div>
+    <form class="inline-search" id="recall-form">
+      <div class="input-with-icon grow">
+        {{ icon("search", 16) }}
+        <input type="search" id="recall-query" placeholder="e.g. remote roles, salary expectations, interview feedback…">
+      </div>
+      <button class="btn btn-secondary" type="submit">Recall</button>
+    </form>
+    <div class="recall-results" id="recall-results"></div>
+  </section>
+
+  <div class="section-head">
+    <div>
+      <h2>Memory store</h2>
+      <p id="memory-summary">Loading memories…</p>
+    </div>
+    <div class="segmented" id="memory-tabs" role="tablist">
+      <button class="segment active" data-status="active" role="tab">Active <span id="count-active">0</span></button>
+      <button class="segment" data-status="needs_confirmation" role="tab">Pending <span id="count-pending">0</span></button>
+      <button class="segment" data-status="forgotten" role="tab">Forgotten <span id="count-forgotten">0</span></button>
+      <button class="segment" data-status="all" role="tab">All</button>
+    </div>
+  </div>
+
+  <section class="memory-grid" id="memory-grid" aria-live="polite">
+    <div class="skeleton-card"></div>
+    <div class="skeleton-card"></div>
+  </section>
+
+  <div class="empty-state roomy" id="memory-empty" hidden>
+    <span class="empty-icon">{{ icon("cpu", 30) }}</span>
+    <h3>Nothing here yet</h3>
+    <p>Tell the agent what matters — “remember that I prefer remote roles” — or add a memory above.</p>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/memory.js', v=app_version) }}"></script>{% endblock %}

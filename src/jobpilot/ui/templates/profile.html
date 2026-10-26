@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon %}
+{% block content %}
+<form class="page-stack profile-form" id="profile-form">
+  <div class="profile-layout">
+    <div class="profile-main">
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">Identity</span>
+            <h3>Who the CV speaks for</h3>
+            <p>These fields become the header of every tailored document.</p>
+          </div>
+          <span class="badge badge-ghost" id="profile-version">v—</span>
+        </div>
+        <div class="grid-2">
+          <label class="field"><span>Full name</span><input type="text" id="p-full-name" required></label>
+          <label class="field"><span>Headline</span><input type="text" id="p-headline" placeholder="AI Engineer building production LLM systems"></label>
+          <label class="field"><span>Email</span><input type="email" id="p-email" autocomplete="email"></label>
+          <label class="field"><span>Phone</span><input type="text" id="p-phone"></label>
+          <label class="field"><span>Location</span><input type="text" id="p-location" placeholder="Islamabad, Pakistan"></label>
+          <label class="field"><span>Work authorization</span><input type="text" id="p-auth" placeholder="Pakistan, no sponsorship required"></label>
+        </div>
+        <div class="grid-3">
+          <label class="field"><span>LinkedIn</span><input type="url" id="p-linkedin" placeholder="https://linkedin.com/in/…"></label>
+          <label class="field"><span>GitHub</span><input type="url" id="p-github" placeholder="https://github.com/…"></label>
+          <label class="field"><span>Portfolio</span><input type="url" id="p-portfolio" placeholder="https://…"></label>
+        </div>
+        <label class="field"><span>Professional summary</span><textarea id="p-summary" rows="4" placeholder="Two or three factual sentences. Every generated CV starts here."></textarea></label>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">Search preferences</span>
+            <h3>What counts as a fit</h3>
+            <p>Used for location, salary and seniority scoring — and for exclusions.</p>
+          </div>
+        </div>
+        <div class="grid-2">
+          <label class="field"><span>Target roles · comma separated</span><input type="text" id="p-target-roles" placeholder="AI Engineer, ML Engineer"></label>
+          <label class="field"><span>Locations · comma separated</span><input type="text" id="p-locations" placeholder="Islamabad, Rawalpindi, Remote"></label>
+          <label class="field"><span>Salary floor</span><input type="number" id="p-salary-floor" min="0" step="1000"></label>
+          <div class="grid-2 nested">
+            <label class="field"><span>Currency</span><input type="text" id="p-currency" maxlength="6" placeholder="PKR"></label>
+            <label class="field"><span>Period</span>
+              <select id="p-salary-period">
+                <option value="month">per month</option>
+                <option value="year">per year</option>
+              </select>
+            </label>
+          </div>
+          <label class="field"><span>Seniority</span>
+            <select id="p-seniority">
+              <option value="intern">Intern</option>
+              <option value="entry">Entry level</option>
+              <option value="mid">Mid level</option>
+              <option value="senior">Senior</option>
+              <option value="lead">Lead</option>
+            </select>
+          </label>
+          <div class="field">
+            <span>Work mode</span>
+            <div class="check-row">
+              <label class="check"><input type="checkbox" id="p-remote-preferred"> Remote preferred</label>
+              <label class="check"><input type="checkbox" id="p-onsite-ok"> On-site acceptable</label>
+            </div>
+          </div>
+        </div>
+        <div class="grid-3">
+          <label class="field"><span>Excluded companies</span><textarea id="p-excluded-companies" rows="2" placeholder="One per line or commas"></textarea></label>
+          <label class="field"><span>Excluded keywords</span><textarea id="p-excluded-keywords" rows="2" placeholder="unpaid, commission only"></textarea></label>
+          <label class="field"><span>Skills to avoid</span><textarea id="p-skills-to-avoid" rows="2" placeholder="Cold calling"></textarea></label>
+        </div>
+        <label class="field"><span>Notes for the agent</span><textarea id="p-notes" rows="2" placeholder="Prefer small product teams. Open to remote roles overlapping 4+ hours with PKT."></textarea></label>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">Evidence</span>
+            <h3>Experience</h3>
+            <p>Bullets are the only achievements the verifier will let a tailored CV reuse.</p>
+          </div>
+          <button class="btn btn-ghost btn-sm" type="button" id="add-experience">{{ icon("plus", 15) }} Add role</button>
+        </div>
+        <div class="repeater" id="experience-list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">Toolkit</span>
+            <h3>Skills</h3>
+            <p>Level runs from 1 (familiar) to 5 (production expert).</p>
+          </div>
+          <button class="btn btn-ghost btn-sm" type="button" id="add-skill">{{ icon("plus", 15) }} Add skill</button>
+        </div>
+        <div class="skill-editor" id="skill-list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div><span class="eyebrow">Education</span><h3>Degrees and programs</h3></div>
+          <button class="btn btn-ghost btn-sm" type="button" id="add-education">{{ icon("plus", 15) }} Add education</button>
+        </div>
+        <div class="repeater" id="education-list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div><span class="eyebrow">Proof of work</span><h3>Projects</h3><p>Shipped work that is not tied to an employer.</p></div>
+          <button class="btn btn-ghost btn-sm" type="button" id="add-project">{{ icon("plus", 15) }} Add project</button>
+        </div>
+        <div class="repeater" id="project-list"></div>
+      </section>
+    </div>
+
+    <aside class="profile-aside">
+      <section class="panel sticky-panel">
+        <span class="eyebrow">Verification</span>
+        <h3>Facts only, by construction</h3>
+        <p class="muted">
+          Before any CV leaves the system, every bullet and sentence is checked against the facts below.
+          Unknown numbers or named tools are rejected and removed.
+        </p>
+        <div class="fact-counts">
+          <div><strong id="fact-experiences">—</strong><span>roles</span></div>
+          <div><strong id="fact-bullets">—</strong><span>bullets</span></div>
+          <div><strong id="fact-skills">—</strong><span>skills</span></div>
+        </div>
+        <div class="aside-actions">
+          <button class="btn btn-primary full" type="submit" id="save-profile">{{ icon("check", 16) }} Save profile</button>
+          <a class="btn btn-ghost full" href="{{ url_for('views.memory_page') }}">{{ icon("cpu", 16) }} Manage memories</a>
+        </div>
+        <p class="fine-print" id="profile-saved-at">Changes update the profile version used for cached scores.</p>
+      </section>
+    </aside>
+  </div>
+
+  <div class="save-bar" id="save-bar" hidden>
+    <span>{{ icon("alert", 16) }} Unsaved profile changes</span>
+    <button class="btn btn-primary btn-sm" type="submit">Save changes</button>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/profile.js', v=app_version) }}"></script>{% endblock %}

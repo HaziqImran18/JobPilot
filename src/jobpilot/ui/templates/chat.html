@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon %}
+{% block content %}
+<div class="chat-layout">
+  <aside class="chat-list" id="chat-list">
+    <div class="chat-list-head">
+      <div>
+        <span class="eyebrow">Workspace</span>
+        <h2>Conversations</h2>
+      </div>
+      <button class="icon-btn" id="new-chat" title="New conversation" aria-label="New conversation">{{ icon("plus", 18) }}</button>
+    </div>
+    <label class="search-field compact">
+      {{ icon("search", 15) }}
+      <input type="search" id="session-search" placeholder="Filter conversations" autocomplete="off">
+    </label>
+    <div class="session-list" id="session-list">
+      <div class="session-skeleton"></div>
+      <div class="session-skeleton"></div>
+      <div class="session-skeleton"></div>
+    </div>
+    <div class="chat-list-foot">
+      <div class="privacy-note">{{ icon("shield", 15) }} <span>Files stay on this machine. External actions need approval.</span></div>
+    </div>
+  </aside>
+
+  <section class="chat-main">
+    <header class="chat-toolbar">
+      <button class="icon-btn mobile-only" id="toggle-chat-list" aria-label="Show conversations">{{ icon("menu", 18) }}</button>
+      <div class="chat-title">
+        <h2 id="chat-title">New conversation</h2>
+        <span id="chat-subtitle">Ask for a search, a score, a tailored CV, or a tracker update.</span>
+      </div>
+      <div class="chat-toolbar-actions">
+        <span class="live-indicator" id="live-indicator" hidden><span class="pulse-dot"></span> Working</span>
+        <span class="badge badge-ghost" id="session-mode">Live</span>
+        <button class="icon-btn" id="delete-chat" title="Delete conversation" aria-label="Delete conversation" hidden>{{ icon("trash", 17) }}</button>
+      </div>
+    </header>
+
+    <div class="message-scroll" id="message-scroll">
+      <div class="message-list" id="messages">
+        <div class="chat-empty" id="chat-empty">
+          <div class="empty-orbit">
+            <span class="orbit-ring"></span>
+            <span class="orbit-core">{{ icon("target", 26) }}</span>
+          </div>
+          <span class="eyebrow">MCP-native job agent</span>
+          <h2>Your search, <span class="gradient-text">verified end to end.</span></h2>
+          <p>
+            JobPilot searches live boards, scores every role against your profile, tailors a CV from
+            real facts only, and tracks the application. Nothing leaves this machine without approval.
+          </p>
+          <div class="prompt-grid">
+            <button class="prompt-card" data-prompt="Find AI Engineer jobs">
+              <span class="prompt-icon">{{ icon("search", 18) }}</span>
+              <span><strong>Find AI Engineer jobs</strong><small>Fetch, dedupe and rank live roles</small></span>
+              {{ icon("arrow-right", 16, "prompt-arrow") }}
+            </button>
+            <button class="prompt-card" data-prompt="Tailor the top match">
+              <span class="prompt-icon">{{ icon("sparkles", 18) }}</span>
+              <span><strong>Tailor the top match</strong><small>Verified CV bullets and cover letter</small></span>
+              {{ icon("arrow-right", 16, "prompt-arrow") }}
+            </button>
+            <button class="prompt-card" data-prompt="Track the top match">
+              <span class="prompt-icon">{{ icon("kanban", 18) }}</span>
+              <span><strong>Track the top match</strong><small>Move it onto your application board</small></span>
+              {{ icon("arrow-right", 16, "prompt-arrow") }}
+            </button>
+            <button class="prompt-card" data-prompt="What do you remember about me?">
+              <span class="prompt-icon">{{ icon("cpu", 18) }}</span>
+              <span><strong>Inspect memory</strong><small>See what the agent remembers</small></span>
+              {{ icon("arrow-right", 16, "prompt-arrow") }}
+            </button>
+          </div>
+        </div>
+      </div>
+      <button class="scroll-bottom" id="scroll-bottom" hidden aria-label="Scroll to latest">{{ icon("chevron-down", 18) }}</button>
+    </div>
+
+    <div class="composer-area">
+      <form class="composer" id="composer-form">
+        <textarea id="composer" rows="1" placeholder="Ask JobPilot to find, score, tailor or track…" autocomplete="off"></textarea>
+        <input type="file" id="file-input" hidden>
+        <div class="composer-row">
+          <span class="composer-hint">
+            <kbd>Enter</kbd> send · <kbd>Shift</kbd>+<kbd>Enter</kbd> newline
+          </span>
+          <button class="send-btn" id="send-btn" type="submit" aria-label="Send message">
+            <span class="send-label">Send</span> {{ icon("send", 17) }}
+          </button>
+        </div>
+      </form>
+      <div class="composer-foot">
+        <span id="connection-status"><span class="status-dot"></span> Local runtime · approvals required for external actions</span>
+        <a href="{{ url_for('views.system_page') }}">System status {{ icon("arrow-right", 12) }}</a>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/chat.js', v=app_version) }}"></script>{% endblock %}

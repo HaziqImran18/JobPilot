@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon %}
+{% block content %}
+<div class="error-page">
+  <span class="error-code">{{ page_title }}</span>
+  <h2>{{ page_subtitle }}</h2>
+  <p>The page you asked for isn’t here. Head back to the workspace and keep going.</p>
+  <a class="btn btn-primary" href="{{ url_for('views.chat_page') }}">{{ icon("arrow-left", 16) }} Back to conversations</a>
+</div>
+{% endblock %}

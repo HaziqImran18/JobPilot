@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Sign in — JobPilot</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg', v=app_version) }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v=app_version) }}">
+  <script src="{{ url_for('static', filename='js/theme.js', v=app_version) }}" defer></script>
+</head>
+<body class="setup-body">
+  <main class="setup-card auth-card">
+    <a class="brand setup-brand" href="{{ url_for('views.login_page') }}">
+      <span class="brand-mark">JP</span>
+      <span class="brand-text">JobPilot<small>MCP agent</small></span>
+    </a>
+
+    <span class="badge badge-mode">Workspace</span>
+    <h1>Welcome back</h1>
+    <p class="setup-lede">Sign in to your private job search workspace.</p>
+
+    {% if error %}<div class="auth-error" role="alert">{{ error }}</div>{% endif %}
+
+    <form method="post" action="{{ url_for('views.login_page') }}" class="auth-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label class="field"><span>Email</span>
+        <input type="email" name="email" value="{{ email }}" autocomplete="email" required autofocus>
+      </label>
+      <label class="field"><span>Password</span>
+        <input type="password" name="password" autocomplete="current-password" required>
+      </label>
+      <button class="btn btn-primary" type="submit">Sign in</button>
+    </form>
+
+    <p class="auth-switch">
+      New to JobPilot? <a href="{{ url_for('views.register_page') }}">Create an account</a>.
+    </p>
+    <p class="setup-note">Your profile, jobs, chats and applications stay in this account.</p>
+  </main>
+</body>
+</html>
