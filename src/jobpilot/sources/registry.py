@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 
 from jobpilot.core.config import Settings, get_settings
 from jobpilot.core.models import JobQuery, RawJob
+from jobpilot.core.utils import utc_now_iso
 from jobpilot.pipelines.extract import dedupe, to_job
 from jobpilot.sources.arbeitnow import ArbeitnowAdapter
 from jobpilot.sources.base import ProbeResult, SourceAdapter
@@ -29,7 +30,9 @@ class FetchReport:
     jobs: list = field(default_factory=list)
     errors: dict[str, str] = field(default_factory=dict)
     counts: dict[str, int] = field(default_factory=dict)
+    latency: dict[str, int] = field(default_factory=dict)
     duration_ms: int = 0
+    started_at: str = field(default_factory=utc_now_iso)
 
     @property
     def total_fetched(self) -> int:
@@ -38,6 +41,24 @@ class FetchReport:
     @property
     def sources_used(self) -> list[str]:
         return sorted(name for name, count in self.counts.items() if count)
+
+    def source_status(self) -> list[dict]:
+        names = sorted(set(self.counts) | set(self.errors) | set(self.latency))
+        status = []
+        for name in names:
+            error = self.errors.get(name) or ""
+            count = int(self.counts.get(name) or 0)
+            status.append(
+                {
+                    "name": name,
+                    "ok": not error and count > 0,
+                    "state": "error" if error else ("ok" if count else "empty"),
+                    "count": count,
+                    "error": error,
+                    "latency_ms": self.latency.get(name),
+                }
+            )
+        return status
 
 
 class SourceRegistry:
@@ -86,6 +107,7 @@ class SourceRegistry:
         with ThreadPoolExecutor(max_workers=min(10, len(adapters))) as pool:
             futures = {adapter.name: pool.submit(adapter.fetch, query) for adapter in adapters}
             for name, future in futures.items():
+                started = time.perf_counter()
                 try:
                     jobs = future.result(timeout=self.settings.http_timeout + 5)
                     results[name] = jobs
@@ -96,6 +118,8 @@ class SourceRegistry:
                 except Exception as exc:  # noqa: BLE001 - one bad source must not break search
                     report.errors[name] = str(exc)[:200]
                     report.counts[name] = 0
+                finally:
+                    report.latency[name] = int((time.perf_counter() - started) * 1000)
 
         raw_jobs: list[RawJob] = []
         for adapter in adapters:

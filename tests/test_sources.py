@@ -128,11 +128,15 @@ def test_location_filter_matches_the_requested_place_only(clean_database):
     service = _seed_jobs()
     result = service.list_cards(location="Lahore", limit=50)
     titles = {job["title"].split()[0] for job in result["items"]}
-    assert titles == {"lahore", "stale"}
+    # A city request accepts verified city matches plus roles explicitly open
+    # worldwide. It must not accept a role advertised only in another city.
+    assert titles == {"lahore", "stale", "remote"}
 
     pakistan = service.list_cards(location="Pakistan", limit=50)
     pak_titles = {job["title"].split()[0] for job in pakistan["items"]}
-    assert pak_titles == {"lahore", "karachi", "islamabad", "stale"}
+    # Country requests include every city in that country plus roles open
+    # worldwide.
+    assert pak_titles == {"lahore", "karachi", "islamabad", "stale", "remote"}
     assert "berlin" not in pak_titles
 
 
@@ -147,7 +151,10 @@ def test_remote_filter_never_bypasses_location(clean_database):
     assert onsite_titles == {"lahore", "karachi", "berlin", "stale"}
 
     lahore_remote = service.list_cards(location="Lahore", remote=True, limit=50)
-    assert lahore_remote["items"] == []
+    # A remote role explicitly open worldwide is eligible for a Lahore
+    # candidate. A role advertised only in Islamabad is not, even though it is
+    # remote-capable.
+    assert {job["title"].split()[0] for job in lahore_remote["items"]} == {"remote"}
 
 
 def test_refetch_updates_a_stored_remote_flag(clean_database):

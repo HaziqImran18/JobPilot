@@ -16,7 +16,7 @@
     <div class="stat-cell">
       <span class="stat-label">Remote-friendly</span>
       <strong class="stat-value" id="stat-remote">—</strong>
-      <span class="stat-foot">Worldwide or async</span>
+      <span class="stat-foot">Verified or open worldwide</span>
     </div>
     <div class="stat-cell">
       <span class="stat-label">Scored</span>
@@ -31,19 +31,69 @@
         <span>Search</span>
         <div class="input-with-icon">
           {{ icon("search", 16) }}
-          <input type="search" id="job-search" placeholder="Title, company, skill…" autocomplete="off">
+          <input type="search" id="job-search" placeholder="Role, skill or team…" autocomplete="off" spellcheck="false">
         </div>
       </label>
       <label class="field">
         <span>Location</span>
-        <input type="text" id="job-location" placeholder="Islamabad, Pakistan">
+        <input type="text" id="job-location" placeholder="Lahore, Karachi, Pakistan, Dubai…" autocomplete="off">
       </label>
       <label class="field">
-        <span>Work mode</span>
-        <select id="job-remote">
+        <span>Category</span>
+        <select id="job-category">
+          <option value="">Any occupation</option>
+          <option value="software">Software engineering</option>
+          <option value="ai_ml">AI / machine learning</option>
+          <option value="data">Data & analytics</option>
+          <option value="devops">DevOps & cloud</option>
+          <option value="security">Security</option>
+          <option value="engineering">Engineering</option>
+          <option value="finance">Finance</option>
+          <option value="banking">Banking</option>
+          <option value="accounting">Accounting</option>
+          <option value="sales">Sales</option>
+          <option value="marketing">Marketing</option>
+          <option value="hr">Human resources</option>
+          <option value="support">Customer support</option>
+          <option value="operations">Operations</option>
+          <option value="management">Management</option>
+          <option value="healthcare">Healthcare</option>
+          <option value="education">Education</option>
+          <option value="legal">Legal</option>
+          <option value="design">Design</option>
+          <option value="admin">Administration</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Workplace</span>
+        <select id="job-workplace">
           <option value="">Any</option>
-          <option value="true">Remote only</option>
-          <option value="false">On-site / hybrid</option>
+          <option value="remote">Remote</option>
+          <option value="hybrid">Hybrid</option>
+          <option value="onsite">On-site</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Seniority</span>
+        <select id="job-seniority">
+          <option value="">Any level</option>
+          <option value="intern">Intern</option>
+          <option value="junior">Junior</option>
+          <option value="mid">Mid-level</option>
+          <option value="senior">Senior</option>
+          <option value="lead">Lead / principal</option>
+          <option value="manager">Manager / director</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Employment</span>
+        <select id="job-employment">
+          <option value="">Any type</option>
+          <option value="full-time">Full-time</option>
+          <option value="part-time">Part-time</option>
+          <option value="contract">Contract</option>
+          <option value="internship">Internship</option>
+          <option value="freelance">Freelance</option>
         </select>
       </label>
       <label class="field">
@@ -66,8 +116,8 @@
       <label class="field">
         <span>Sort</span>
         <select id="job-sort">
+          <option value="relevance">Best match</option>
           <option value="newest">Newest first</option>
-          <option value="score">Best match</option>
           <option value="salary">Salary</option>
           <option value="oldest">Oldest first</option>
         </select>
@@ -78,11 +128,11 @@
       </label>
     </div>
     <div class="filter-actions">
-      <div class="filter-note" id="filter-note">{{ icon("filter", 14) }} <span>Filters apply instantly to stored jobs.</span></div>
+      <div class="filter-note" id="filter-note">{{ icon("filter", 14) }} <span>Searches fetch live postings from every enabled source.</span></div>
       <div class="button-row">
         <button class="btn btn-ghost btn-sm" id="import-job-btn">{{ icon("link", 15) }} Import URL</button>
-        <button class="btn btn-secondary btn-sm" id="rank-jobs-btn">{{ icon("sparkles", 15) }} Rank matches</button>
-        <button class="btn btn-primary btn-sm" id="refresh-jobs-btn">{{ icon("refresh", 15) }} Fetch fresh jobs</button>
+        <button class="btn btn-secondary btn-sm" id="rank-jobs-btn">{{ icon("sparkles", 15) }} Rank against profile</button>
+        <button class="btn btn-primary btn-sm" id="refresh-jobs-btn">{{ icon("refresh", 15) }} Search live jobs</button>
       </div>
     </div>
     <div class="active-filters" id="active-filters" hidden>
@@ -90,6 +140,19 @@
       <div class="chip-row" id="active-filter-chips"></div>
       <button class="btn btn-ghost btn-xs" id="clear-filters-btn">{{ icon("x", 13) }} Clear filters</button>
     </div>
+  </section>
+
+  <section class="panel insight-panel" id="insight-panel" hidden>
+    <div class="insight-head">
+      <div>
+        <span class="eyebrow">Search run</span>
+        <h3 id="insight-title">Interpreting your request…</h3>
+        <p id="insight-copy"></p>
+      </div>
+      <span class="badge badge-ghost" id="insight-time"></span>
+    </div>
+    <div class="interpreted-row" id="interpreted-row"></div>
+    <div class="source-status" id="source-status"></div>
   </section>
 
   <div class="section-head">
@@ -111,9 +174,9 @@
   <div class="empty-state roomy" id="jobs-empty" hidden>
     <span class="empty-icon">{{ icon("briefcase", 30) }}</span>
     <h3>No postings yet</h3>
-    <p>Fetch jobs from the free sources. Every posting comes from a live job board.</p>
+    <p>Search live sources. Every posting comes from a real job board, never a demo list.</p>
     <div class="button-row">
-      <button class="btn btn-primary" data-empty-action="refresh">{{ icon("refresh", 16) }} Fetch fresh jobs</button>
+      <button class="btn btn-primary" data-empty-action="refresh">{{ icon("refresh", 16) }} Search live jobs</button>
       <button class="btn btn-ghost" data-empty-action="clear" id="empty-clear-filters" hidden>{{ icon("x", 16) }} Clear filters</button>
     </div>
   </div>

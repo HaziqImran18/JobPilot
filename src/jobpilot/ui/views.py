@@ -21,6 +21,7 @@ from jobpilot.bootstrap import bootstrap_workspace
 from jobpilot.core.auth import AuthError, AuthStore
 from jobpilot.core.config import get_settings
 from jobpilot.core.user_context import set_current_user
+from jobpilot.services.resume import ResumeError, get_resumes
 
 views = Blueprint("views", __name__)
 
@@ -91,6 +92,18 @@ def register_page():
                 error = str(exc)
             else:
                 _login(user)
+                upload = request.files.get("resume")
+                if upload is not None and upload.filename:
+                    try:
+                        get_resumes().upload(
+                            upload.filename,
+                            upload.read(),
+                            mime_type=upload.mimetype or "",
+                        )
+                    except ResumeError as exc:
+                        # The account exists; surface the problem on the profile
+                        # page instead of discarding a valid registration.
+                        session["resume_error"] = str(exc)
                 return redirect(url_for("views.chat_page"))
 
     return render_template(
@@ -189,11 +202,15 @@ def memory_page():
 
 @views.get("/profile")
 def profile_page():
-    return _page(
+    resume_error = session.pop("resume_error", "")
+    return render_template(
         "profile.html",
-        "Profile",
-        "The single source of truth for every generated claim.",
-        "profile",
+        page_title="Profile",
+        page_subtitle="The single source of truth for every generated claim.",
+        active_page="profile",
+        app_version=__version__,
+        mode=get_settings().mode,
+        resume_error=resume_error,
     )
 
 

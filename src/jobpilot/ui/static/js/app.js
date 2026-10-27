@@ -372,6 +372,24 @@
     return chips(job.top_skills || [], "", 5);
   }
 
+  function eligibilityTone(job) {
+    if (!job.workplace_type) return "unknown";
+    if (job.workplace_type !== "remote") return "neutral";
+    if (job.remote_scope === "worldwide") return "confirmed";
+    if (["country", "region", "city"].includes(job.remote_scope)) return "restricted";
+    return "unknown";
+  }
+
+  function eligibilityBadge(job) {
+    const label = job.eligibility_label || (
+      job.workplace_type === "remote" ? "Remote · eligibility unknown" :
+      job.workplace_type === "hybrid" ? "Hybrid" :
+      job.workplace_type === "onsite" ? "On-site" : "Workplace type unknown"
+    );
+    const tone = eligibilityTone(job);
+    return `<span class="eligibility-badge ${tone}"><span class="eligibility-dot"></span>${escapeHtml(label)}</span>`;
+  }
+
   function jobCard(item, options = {}) {
     const job = normalizeJob(item);
     if (!job.id) return "";
@@ -380,19 +398,26 @@
     const salary = salaryLabel(job);
     const score = job.score;
     const rationale = job.rationale || "";
+    const category = job.category_label || titleCase(job.category || "");
     return `
       <article class="job-card" data-job-id="${escapeAttr(job.id)}">
         <div class="job-top">
           <div class="job-heading">
-            <span class="job-source">${escapeHtml(source)}</span>
+            <div class="job-eyebrow">
+              <span class="job-source">${escapeHtml(source)}</span>
+              ${category ? `<span class="job-category">${escapeHtml(category)}</span>` : ""}
+              ${job.match_kind === "related" ? '<span class="job-match-kind">Related role</span>' : ""}
+            </div>
             <h3 class="job-title"><a href="#" data-job-action="open" data-job-id="${escapeAttr(job.id)}">${escapeHtml(job.title || "Untitled role")}</a></h3>
             <p class="job-company">${escapeHtml(job.company || "Unknown company")}</p>
           </div>
           ${scoreRing(score)}
         </div>
+        <div class="job-eligibility">${eligibilityBadge(job)}</div>
         <div class="job-meta">
           <span><svg class="icon" width="12" height="12"><use href="#i-target"></use></svg>${escapeHtml(location)}</span>
-          ${job.remote ? '<span><svg class="icon" width="12" height="12"><use href="#i-zap"></use></svg>Remote</span>' : ""}
+          ${job.seniority ? `<span><svg class="icon" width="12" height="12"><use href="#i-user"></use></svg>${escapeHtml(titleCase(job.seniority))}</span>` : ""}
+          ${job.employment_type ? `<span><svg class="icon" width="12" height="12"><use href="#i-briefcase"></use></svg>${escapeHtml(titleCase(job.employment_type))}</span>` : ""}
           ${salary ? `<span class="job-salary"><svg class="icon" width="12" height="12"><use href="#i-dollar"></use></svg>${escapeHtml(salary)}</span>` : ""}
           ${job.posted_at ? `<span><svg class="icon" width="12" height="12"><use href="#i-clock"></use></svg>${escapeHtml(formatRelative(job.posted_at))}</span>` : ""}
         </div>
@@ -442,11 +467,13 @@
         </div>
         <div class="detail-meta">
           <span><svg class="icon" width="13" height="13"><use href="#i-target"></use></svg>${escapeHtml(job.location || "Location not listed")}</span>
-          ${job.remote ? '<span><svg class="icon" width="13" height="13"><use href="#i-zap"></use></svg>Remote</span>' : ""}
+          ${job.category_label || job.category ? `<span><svg class="icon" width="13" height="13"><use href="#i-filter"></use></svg>${escapeHtml(job.category_label || titleCase(job.category))}</span>` : ""}
+          ${job.seniority ? `<span><svg class="icon" width="13" height="13"><use href="#i-user"></use></svg>${escapeHtml(titleCase(job.seniority))}</span>` : ""}
           ${salary ? `<span><svg class="icon" width="13" height="13"><use href="#i-dollar"></use></svg>${escapeHtml(salary)}</span>` : ""}
           ${job.employment_type ? `<span><svg class="icon" width="13" height="13"><use href="#i-briefcase"></use></svg>${escapeHtml(titleCase(job.employment_type))}</span>` : ""}
           ${job.posted_at ? `<span><svg class="icon" width="13" height="13"><use href="#i-clock"></use></svg>${escapeHtml(formatDate(job.posted_at))}</span>` : ""}
         </div>
+        <div class="job-eligibility detail">${eligibilityBadge(job)}</div>
         ${detail.rationale ? `<div class="tailor-banner" style="margin-bottom:12px"><svg class="icon" width="16" height="16"><use href="#i-sparkles"></use></svg><div><strong>Why this score</strong><p>${escapeHtml(detail.rationale)}</p></div></div>` : ""}
         ${matched.length ? `<div class="detail-section"><h4>Matched skills</h4>${chips(matched, "match", 12)}</div>` : ""}
         ${missing.length ? `<div class="detail-section"><h4>Gaps to address</h4>${chips(missing, "gap", 12)}</div>` : ""}
@@ -682,6 +709,7 @@
     scoreRing,
     scoreColor,
     chips,
+    eligibilityBadge,
     jobCard,
     openJob,
     tailorJob,

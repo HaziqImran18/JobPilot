@@ -30,7 +30,7 @@ def create_app(settings: Settings | None = None, *, preload_mcp: bool | None = N
     )
     app.config.update(
         SECRET_KEY=settings.secret_key,
-        MAX_CONTENT_LENGTH=2 * 1024 * 1024,
+        MAX_CONTENT_LENGTH=12 * 1024 * 1024,
         JSON_SORT_KEYS=False,
         PREFERRED_URL_SCHEME="http",
         TEMPLATES_AUTO_RELOAD=settings.debug,

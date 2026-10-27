@@ -367,4 +367,7 @@
   } else {
     init();
   }
+
+  // Resume import needs to refresh the editor without discarding the page.
+  window.JobPilotProfile = { reload: init };
 })();

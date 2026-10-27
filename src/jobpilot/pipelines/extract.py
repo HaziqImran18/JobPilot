@@ -14,6 +14,8 @@ from jobpilot.core.utils import (
     to_iso,
     utc_now_iso,
 )
+from jobpilot.pipelines.categories import classify_category
+from jobpilot.pipelines.locations import infer_seniority, parse_remote_info
 
 # Canonical skill names mapped to aliases found in job descriptions.
 SKILL_ALIASES: dict[str, list[str]] = {
@@ -334,9 +336,32 @@ def to_job(raw: RawJob) -> Job:
         if skill not in tags:
             tags.append(skill)
     salary = raw.salary or parse_salary(f"{description[:4000]}")
-    remote = raw.remote
-    if remote is None:
-        remote = detect_remote(location, tags)
+    detected_remote = raw.remote
+    if detected_remote is None:
+        detected_remote = detect_remote(location, tags)
+
+    remote_info = parse_remote_info(
+        location=location,
+        title=raw.title,
+        description=description,
+        tags=tags,
+        raw_remote=detected_remote,
+    )
+    workplace = raw.workplace_type or remote_info.workplace_type
+    if workplace == "remote":
+        remote: bool | None = True
+    elif workplace == "hybrid":
+        remote = True
+    elif workplace == "onsite":
+        remote = False
+    else:
+        remote = detected_remote
+
+    category_match = classify_category(raw.title, description, tags)
+    category = raw.category or category_match.category or "other"
+    seniority = raw.seniority or infer_seniority(raw.title, description)
+    job_location = raw.job_location or remote_info.job_location or location
+    fetched_at = utc_now_iso()
     fingerprint = build_fingerprint(raw.title, raw.company, location)
     job_id = f"job_{fingerprint[:14]}"
     return Job(
@@ -352,10 +377,22 @@ def to_job(raw: RawJob) -> Job:
         employment_type=raw.employment_type or infer_employment_type(description, tags),
         salary=salary,
         posted_at=to_iso(raw.posted_at),
-        fetched_at=utc_now_iso(),
+        fetched_at=fetched_at,
         fingerprint=fingerprint,
         tags=tags[:24],
         raw=raw.raw,
+        category=category,
+        seniority=seniority,
+        workplace_type=workplace,
+        company_location=raw.company_location or remote_info.company_location,
+        job_location=job_location,
+        eligible_locations=raw.eligible_locations or remote_info.eligible_locations,
+        remote_scope=raw.remote_scope or remote_info.remote_scope,
+        location_confidence=remote_info.location_confidence,
+        status="active",
+        first_seen_at=fetched_at,
+        last_seen_at=fetched_at,
+        last_checked_at=fetched_at,
     )
 
 

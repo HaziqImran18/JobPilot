@@ -25,6 +25,33 @@ TECH_CATEGORIES = (
     "computer-software",
     "web-e-commerce",
 )
+# Verified category slugs on the public server-rendered pages (October 2026).
+# Keyword search and ?page=2 both return HTTP 410, so coverage comes from reading
+# the right category/city pages rather than paginating.
+CATEGORY_SLUGS: dict[str, tuple[str, ...]] = {
+    "software": TECH_CATEGORIES,
+    "ai_ml": ("information-technology", "computer-software"),
+    "data": ("information-technology", "computer-software"),
+    "devops": ("information-technology", "computer-software"),
+    "security": ("information-technology", "computer-software"),
+    "engineering": ("engineering", "information-technology"),
+    "finance": ("accounting", "finance"),
+    "banking": ("accounting", "finance"),
+    "accounting": ("accounting", "finance"),
+    "sales": ("sales", "advertising-marketing-public-relations"),
+    "marketing": ("advertising-marketing-public-relations", "media"),
+    "hr": ("human-resources-recruiting", "administrative"),
+    "support": ("customer-service-and-call-centre", "administrative"),
+    "operations": ("supply-chain", "procurement", "administrative"),
+    "management": ("management", "administrative"),
+    "healthcare": ("healthcare",),
+    "education": ("education",),
+    "legal": ("legal",),
+    "design": ("media", "information-technology"),
+    "admin": ("administrative", "customer-service-and-call-centre"),
+    "other": ("accounting", "sales", "information-technology"),
+}
+DEFAULT_CATEGORIES = ("information-technology", "accounting", "sales")
 CITY_SLUGS = {
     "islamabad": "islamabad",
     "rawalpindi": "rawalpindi",
@@ -81,14 +108,34 @@ class MustakbilAdapter(SourceAdapter):
 def _category_urls(query: JobQuery) -> list[str]:
     location = (query.location or "").strip().lower()
     first = re.split(r"\s*,\s*", location, maxsplit=1)[0].strip()
-    if query.remote is True or first in {"remote", "anywhere", "worldwide", "online"}:
+    if query.remote is True or query.workplace_type == "remote" or first in {
+        "remote",
+        "anywhere",
+        "worldwide",
+        "online",
+    }:
         return [f"{BASE_URL}/jobs/pakistan/online"]
+
+    slugs: list[str] = []
+    if query.category:
+        slugs.extend(CATEGORY_SLUGS.get(query.category, ()))  # type: ignore[arg-type]
+    if not slugs:
+        slugs.extend(DEFAULT_CATEGORIES)
+    slugs = list(dict.fromkeys(slug for slug in slugs if slug))[:4]
+
     if first and first not in {"pakistan", "pk"}:
-        slug = CITY_SLUGS.get(first)
-        if not slug:
+        city = CITY_SLUGS.get(first)
+        if not city:
             return []  # Mustakbil only publishes Pakistani roles.
-        return [f"{BASE_URL}/jobs/pakistan/{slug}"]
-    return [f"{BASE_URL}/jobs/pakistan/{slug}" for slug in TECH_CATEGORIES]
+        # A city page is the broadest view of that city. Add one category page
+        # so a niche occupation still shows up when the city feed is busy.
+        return [f"{BASE_URL}/jobs/pakistan/{city}"] + [
+            f"{BASE_URL}/jobs/pakistan/{slug}" for slug in slugs[:1]
+        ]
+    urls = [f"{BASE_URL}/jobs/pakistan/{slug}" for slug in slugs]
+    # The all-country page catches roles whose category we did not name.
+    urls.append(f"{BASE_URL}/jobs/pakistan")
+    return list(dict.fromkeys(urls))
 
 
 def parse_mustakbil_cards(html: str, *, category: str = "") -> list[RawJob]:

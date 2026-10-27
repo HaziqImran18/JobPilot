@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 
 from jobpilot.core.models import JobQuery, RawJob
 from jobpilot.core.utils import parse_datetime, parse_relative_date
+from jobpilot.pipelines.categories import category_label
 from jobpilot.pipelines.extract import infer_employment_type, parse_salary
 from jobpilot.sources.base import SourceAdapter, SourceError, looks_remote
 
@@ -21,6 +22,7 @@ BASE_URL = "https://www.linkedin.com"
 SEARCH_URL = f"{BASE_URL}/jobs-guest/jobs/api/seeMoreJobPostings/search"
 DETAIL_URL = f"{BASE_URL}/jobs-guest/jobs/api/jobPosting"
 PAGE_SIZE = 10
+MAX_PAGES = 3
 
 
 class LinkedInAdapter(SourceAdapter):
@@ -38,13 +40,29 @@ class LinkedInAdapter(SourceAdapter):
             raise SourceError("Unexpected LinkedIn guest-search response")
 
     def fetch(self, query: JobQuery) -> list[RawJob]:
-        keywords = query.query.strip() or "software engineer"
-        location = query.location.strip() or "Pakistan"
+        keywords = (
+            query.query.strip()
+            or category_label(query.category)
+            or "jobs"
+        )
+        location = query.location.strip()
+        remote_only = query.workplace_type == "remote" or query.remote is True
+        if not location:
+            location = "Worldwide"
         wanted = max(query.limit * 2, 20)
         jobs: list[RawJob] = []
         seen: set[str] = set()
-        for start in range(0, min(wanted, 30), PAGE_SIZE):
-            params = _search_params(keywords, location, start, query.posted_within_days)
+        for page in range(MAX_PAGES):
+            start = page * PAGE_SIZE
+            if start >= wanted:
+                break
+            params = _search_params(
+                keywords,
+                location,
+                start,
+                query.posted_within_days,
+                remote=remote_only,
+            )
             html = self.get_html(SEARCH_URL, params)
             cards = parse_linkedin_cards(html)
             if not cards:
@@ -58,9 +76,9 @@ class LinkedInAdapter(SourceAdapter):
                 break
         if not jobs:
             return []
-        # Guest search cards have no description. Read the first few detail
-        # pages so matching has real evidence to work with.
-        for job in jobs[: min(len(jobs), 8)]:
+        # Guest search cards have no description. Read a few detail pages so
+        # matching has real evidence to work with.
+        for job in jobs[: min(len(jobs), 4)]:
             try:
                 detail = self.get_html(f"{DETAIL_URL}/{job.external_id}")
             except SourceError:
@@ -80,6 +98,7 @@ def _search_params(
     location: str,
     start: int,
     posted_within_days: int | None = None,
+    remote: bool = False,
 ) -> dict[str, str | int]:
     params: dict[str, str | int] = {
         "keywords": keywords,
@@ -88,6 +107,9 @@ def _search_params(
     }
     if posted_within_days:
         params["f_TPR"] = f"r{posted_within_days * 24 * 60 * 60}"
+    if remote:
+        # LinkedIn's public guest UI uses f_WT=2 for remote roles.
+        params["f_WT"] = "2"
     return params
 
 
@@ -121,7 +143,7 @@ def parse_linkedin_cards(html: str) -> list[RawJob]:
                 company=company,
                 url=urljoin(BASE_URL, href.split("?")[0]),
                 description="",
-                location=location or "Remote",
+                location=location,
                 remote=True if looks_remote(f"{title} {location}") else None,
                 employment_type=infer_employment_type(title),
                 posted_at=posted,

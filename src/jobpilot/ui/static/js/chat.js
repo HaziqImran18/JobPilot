@@ -56,6 +56,7 @@
             <div>
               <strong>${JP.esc(job.title)}</strong>
               <small>${JP.esc(job.company || "")}${job.location ? ` · ${JP.esc(job.location)}` : ""}</small>
+              ${job.workplace_type ? `<div class="job-eligibility chat">${JP.eligibilityBadge(job)}</div>` : ""}
             </div>
             ${score !== undefined && score !== null ? `<span class="mini-score">${Math.round(score)}</span>` : ""}
           </div>
@@ -377,6 +378,9 @@
       metaMode: wrapper.querySelector(".stream-mode"),
       toolLog: [],
       cards: [],
+      startedAt: Date.now(),
+      lastEvent: Date.now(),
+      heartbeat: null,
       pending: [],
       text: "",
       stepsCount: 0,
@@ -384,8 +388,27 @@
       mode: "live",
     };
     state.stream = stream;
+    stream.heartbeat = window.setInterval(() => {
+      if (!state.stream) return;
+      const elapsed = Math.max(1, Math.round((Date.now() - stream.startedAt) / 1000));
+      const idle = Math.round((Date.now() - stream.lastEvent) / 1000);
+      const indicator = $("#live-indicator");
+      if (!indicator) return;
+      const tone = idle > 25 ? "Waiting on a live source" : idle > 8 ? "Thinking" : "Working";
+      indicator.innerHTML = `<span class="pulse-dot"></span> ${tone} · ${elapsed}s`;
+      indicator.hidden = false;
+    }, 1000);
     window.setTimeout(() => scrollToBottom(true), 30);
     return stream;
+  }
+
+  function stopHeartbeat() {
+    if (state.stream && state.stream.heartbeat) {
+      window.clearInterval(state.stream.heartbeat);
+      state.stream.heartbeat = null;
+    }
+    const indicator = $("#live-indicator");
+    if (indicator) indicator.hidden = true;
   }
 
   function appendToken(text) {
@@ -409,6 +432,7 @@
   function finalizeStream(data) {
     if (!state.stream) return;
     const stream = state.stream;
+    stopHeartbeat();
     if (!stream.text && data.message) stream.text = data.message;
     stream.bubble.classList.remove("streaming");
     stream.bubble.innerHTML = JP.md(stream.text || "No answer was produced.");
@@ -438,6 +462,7 @@
       return;
     }
     const stream = state.stream;
+    stopHeartbeat();
     stream.bubble.classList.remove("streaming");
     if (!stream.text) {
       stream.bubble.innerHTML = `<span style="color:var(--danger)">${JP.esc(message)}</span>`;
@@ -452,6 +477,7 @@
 
   function handleEvent(type, data) {
     if (!state.stream && type !== "done" && type !== "error") return;
+    if (state.stream) state.stream.lastEvent = Date.now();
     switch (type) {
       case "status":
         addRunStep(data.text || "Working…");

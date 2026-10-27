@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 from pathlib import Path
 
 from jobpilot import __version__
@@ -202,6 +203,57 @@ def test_profile_round_trip(client):
     fetched = client.get("/api/profile")
     assert fetched.json["profile"]["skills"] == payload["skills"]
     assert fetched.json["profile"]["experiences"] == payload["experiences"]
+
+
+def test_resume_upload_review_apply_and_delete(client):
+    text = (
+        "Ayesha Khan\nSenior AI Engineer\nayesha.khan@example.com\n"
+        "Lahore, Pakistan\n\nSummary\nAI engineer with 6 years of experience "
+        "building Python and machine learning systems.\n\nSkills\nPython, PyTorch, SQL\n"
+    )
+    upload = client.post(
+        "/api/resumes",
+        headers=HEADERS,
+        data={"file": (io.BytesIO(text.encode("utf-8")), "resume.txt")},
+        content_type="multipart/form-data",
+    )
+    assert upload.status_code == 201
+    resume = upload.json["resume"]
+    assert resume["status"] == "ready"
+    assert resume["is_active"] is True
+    assert "Python" in resume["extracted"]["skills"]
+
+    listing = client.get("/api/resumes")
+    assert listing.json["active_id"] == resume["id"]
+    assert len(listing.json["resumes"]) == 1
+
+    reviewed = client.put(
+        f"/api/resumes/{resume['id']}",
+        headers=HEADERS,
+        json={"fields": {"headline": "Senior AI Engineer", "location": "Lahore, Pakistan"}},
+    )
+    assert reviewed.status_code == 200
+    assert reviewed.json["resume"]["extracted"]["headline"] == "Senior AI Engineer"
+
+    applied = client.post(
+        f"/api/resumes/{resume['id']}/apply",
+        headers=HEADERS,
+        json={"fields": ["headline", "location", "email", "skills"]},
+    )
+    assert applied.status_code == 200
+    assert "headline" in applied.json["applied"]
+    profile = client.get("/api/profile").json["profile"]
+    assert profile["headline"] == "Senior AI Engineer"
+    assert profile["location"] == "Lahore, Pakistan"
+    assert "Python" in {skill["name"] for skill in profile["skills"]}
+
+    file_response = client.get(f"/api/resumes/{resume['id']}/file")
+    assert file_response.status_code == 200
+    assert file_response.mimetype == "text/plain"
+
+    assert client.delete(f"/api/resumes/{resume['id']}", headers=HEADERS).status_code == 200
+    assert client.get("/api/resumes").json["resumes"] == []
+    assert client.get(f"/api/resumes/{resume['id']}/file").status_code == 404
 
 
 def test_system_stats_doctor_traces_and_usage(client):

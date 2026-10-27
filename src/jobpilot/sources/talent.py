@@ -1,4 +1,13 @@
-"""Talent.com adapter — Pakistan-focused aggregator with public HTML pages."""
+"""Talent.com adapter — public HTML search across supported country hosts.
+
+Talent.com publishes one host per country (``pk.talent.com``, ``uk.talent.com``
+and so on). The adapter picks the host from the requested location, falls back
+to Pakistan for a blank request, and reads two result pages.
+
+``ca.talent.com`` and ``us.talent.com`` are blocked or missing from some
+networks; the registry reports that per source rather than pretending the
+search succeeded.
+"""
 
 from __future__ import annotations
 
@@ -9,11 +18,25 @@ from bs4 import BeautifulSoup
 
 from jobpilot.core.models import JobQuery, RawJob
 from jobpilot.core.utils import parse_relative_date
+from jobpilot.pipelines.categories import category_label
 from jobpilot.pipelines.extract import infer_employment_type, parse_salary
+from jobpilot.pipelines.locations import resolve_location
 from jobpilot.sources.base import SourceAdapter, SourceError, looks_remote
 
 BASE_URL = "https://pk.talent.com"
 SEARCH_URL = f"{BASE_URL}/jobs"
+MAX_PAGES = 2
+COUNTRY_HOSTS: dict[str, str] = {
+    "Pakistan": "pk.talent.com",
+    "United Kingdom": "uk.talent.com",
+    "United Arab Emirates": "ae.talent.com",
+    "India": "in.talent.com",
+    "Australia": "au.talent.com",
+    "Singapore": "sg.talent.com",
+    "Germany": "de.talent.com",
+    "France": "fr.talent.com",
+    "Netherlands": "nl.talent.com",
+}
 
 
 class TalentAdapter(SourceAdapter):
@@ -31,19 +54,55 @@ class TalentAdapter(SourceAdapter):
             raise SourceError("Unexpected Talent.com page layout")
 
     def fetch(self, query: JobQuery) -> list[RawJob]:
-        params = {
-            "k": query.query.strip() or "software engineer",
-            "l": query.location.strip() or "Pakistan",
-        }
-        html = self.get_html(SEARCH_URL, params)
-        jobs = parse_talent_cards(html)
+        location = resolve_location(query.location)
+        country = location.country or "Pakistan"
+        host = COUNTRY_HOSTS.get(country)
+        if not host:
+            # No dedicated host: use the global site rather than guessing a
+            # country host that does not exist.
+            host = "www.talent.com"
+        base = f"https://{host}"
+        keyword = (
+            query.query.strip()
+            or category_label(query.category)
+            or "jobs"
+        )
+        place = location.display or ("Remote" if location.remote_only else country)
+        params: dict[str, str] = {"k": keyword}
+        if query.workplace_type == "remote" or query.remote is True:
+            params["l"] = "Remote"
+        else:
+            params["l"] = place
+
+        wanted = max(query.limit * 2, 20)
+        jobs: list[RawJob] = []
+        seen: set[str] = set()
+        for page in range(1, MAX_PAGES + 1):
+            page_params = dict(params)
+            if page > 1:
+                page_params["p"] = str(page)
+            html = self.get_html(f"{base}/jobs", page_params)
+            cards = parse_talent_cards(
+                html,
+                default_location=place,
+                currency="PKR" if country == "Pakistan" else "",
+            )
+            if not cards:
+                break
+            for job in cards:
+                if job.external_id in seen:
+                    continue
+                seen.add(job.external_id)
+                jobs.append(job)
+            if len(cards) < 15 or len(jobs) >= wanted:
+                break
+
         if not jobs:
             return []
-        limit = max(query.limit * 2, 20)
-        jobs = jobs[:limit]
-        # Listing snippets are short. Read the first few detail pages so the
-        # matcher sees the real requirements, not just the teaser.
-        for job in jobs[: min(len(jobs), 10)]:
+        jobs = jobs[:wanted]
+        # Listing snippets are short. Read a few detail pages so matching has
+        # real requirements, not just the teaser.
+        for job in jobs[: min(len(jobs), 6)]:
             try:
                 detail = self.get_html(job.url)
             except SourceError:
@@ -51,13 +110,19 @@ class TalentAdapter(SourceAdapter):
             description = parse_talent_detail(detail)
             if description and len(description) > len(job.description):
                 job.description = description
-                job.salary = job.salary or parse_talent_salary(description[:6000])
+                job.salary = job.salary or parse_talent_salary(
+                    description[:6000], currency="PKR" if country == "Pakistan" else ""
+                )
                 job.posted_at = parse_relative_date(description[:400]) or job.posted_at
         return jobs
 
 
-def parse_talent_cards(html: str) -> list[RawJob]:
+def parse_talent_cards(
+    html: str, *, default_location: str = "Pakistan", currency: str = "PKR"
+) -> list[RawJob]:
     soup = BeautifulSoup(html, "html.parser")
+    host = html_base(html)
+    base = f"https://{host}" if host else BASE_URL
     jobs: list[RawJob] = []
     for card in soup.select(".JobCard_card__TSiPB, article[class*='JobCard_card']"):
         link = card.select_one("a[href*='/view?id=']")
@@ -81,12 +146,12 @@ def parse_talent_cards(html: str) -> list[RawJob]:
                 external_id=external_id,
                 title=title,
                 company=company,
-                url=urljoin(BASE_URL, href),
+                url=urljoin(base, href),
                 description=body,
-                location=location or "Pakistan",
+                location=location or default_location,
                 remote=True if looks_remote(f"{title} {location}", [body]) else None,
                 employment_type=infer_employment_type(body, time_text),
-                salary=parse_talent_salary(body),
+                salary=parse_talent_salary(body, currency=currency),
                 posted_at=posted,
                 tags=[],
                 raw={"listing": body[:600], "time": time_text},
@@ -95,10 +160,19 @@ def parse_talent_cards(html: str) -> list[RawJob]:
     return jobs
 
 
+def html_base(html: str) -> str:
+    """Best-effort host from a canonical link, used to make card URLs absolute."""
+    match = re.search(r'<link[^>]+rel="canonical"[^>]+href="https?://([^/"]+)', html)
+    if match:
+        return match.group(1)
+    match = re.search(r'https?://([a-z.]*talent\.com)', html)
+    return match.group(1) if match else ""
+
+
 _CURRENCY_MARKER = re.compile(r"(?i)(?:PKR|Rs\.?|USD|EUR|GBP|\$|€|£|₹)")
 
 
-def parse_talent_salary(text: str):
+def parse_talent_salary(text: str, *, currency: str = "PKR"):
     """Talent.com Pakistan quotes monthly rupees unless a currency is shown.
 
     ``parse_salary("150k to 180k")`` has no currency to work with and defaults
@@ -107,10 +181,12 @@ def parse_talent_salary(text: str):
     salary = parse_salary(text)
     if salary is None:
         return None
+    if not currency:
+        return salary
     lowered = (text or "").lower()
     if not _CURRENCY_MARKER.search(text or ""):
         period = "year" if re.search(r"\b(per annum|annum|annual|yearly)\b", lowered) else "month"
-        salary = salary.model_copy(update={"currency": "PKR", "period": period})
+        salary = salary.model_copy(update={"currency": currency, "period": period})
     return salary
 
 
@@ -141,4 +217,10 @@ def _text(node) -> str:
     return re.sub(r"\s+", " ", node.get_text(" ", strip=True)).strip()
 
 
-__all__ = ["TalentAdapter", "parse_talent_cards", "parse_talent_detail"]
+__all__ = [
+    "COUNTRY_HOSTS",
+    "TalentAdapter",
+    "parse_talent_cards",
+    "parse_talent_detail",
+    "parse_talent_salary",
+]

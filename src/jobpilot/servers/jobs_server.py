@@ -7,6 +7,7 @@ from mcp.server.fastmcp import FastMCP
 from jobpilot.core.models import JobQuery
 from jobpilot.harness.guardrails import as_untrusted, scan_untrusted
 from jobpilot.servers.common import ensure_ready, jsonable
+from jobpilot.services.discovery import get_discovery
 from jobpilot.services.jobs import JobService
 from jobpilot.services.profile import ProfileService
 
@@ -25,35 +26,53 @@ def search_jobs(
     remote: bool | None = None,
     limit: int = 10,
     refresh: bool = False,
+    category: str = "",
+    workplace_type: str = "",
+    seniority: str = "",
+    employment_type: str = "",
+    posted_within_days: int | None = None,
 ) -> dict:
-    """Search stored job postings. Returns compact cards (no full descriptions) with
-    match scores when available. Set refresh=true to fetch fresh postings from free
-    job APIs before searching. Call get_job(job_id) when you need the full text."""
-    service = _jobs()
+    """Search live job postings through the shared discovery pipeline.
+
+    The first search (or one older than ten minutes) fetches fresh postings from
+    the enabled free sources, then applies occupation, location, remote
+    eligibility, seniority and employment filters. Results include compact cards
+    with match scores, the interpreted filters, per-source status and retrieval
+    time. Pass refresh=true to force a fetch. Call get_job(job_id) for full text.
+    """
     job_query = JobQuery(
         query=query,
         location=location,
         remote=remote,
         limit=max(1, min(limit, 40)),
+        category=category,
+        workplace_type=workplace_type,
+        seniority=seniority,
+        employment_type=employment_type,
+        posted_within_days=posted_within_days,
     )
-    errors: dict[str, str] = {}
-    if refresh:
-        report = service.refresh(job_query)
-        errors = report["errors"]
-    profile = ProfileService().get()
-    cards = service.list_cards(
-        profile_version=profile.version(),
-        query=query,
-        location=location,
-        remote=remote,
+    result = get_discovery().discover(
+        job_query,
+        force=refresh,
+        profile_version=ProfileService().get().version(),
+        sort="relevance",
         limit=job_query.limit,
-        sort="score" if query else "newest",
     )
-    return {
-        "jobs": cards["items"],
-        "total": cards["total"],
-        "errors": errors,
-    }
+    return jsonable(
+        {
+            "jobs": result.items,
+            "total": result.total,
+            "exact": result.exact,
+            "related": result.related,
+            "interpreted": result.interpreted,
+            "source_status": result.source_status,
+            "errors": result.errors,
+            "ok": result.ok,
+            "cached": result.cached,
+            "retrieved_at": result.retrieved_at,
+            "message": result.message,
+        }
+    )
 
 
 @mcp.tool()
@@ -77,15 +96,34 @@ def refresh_jobs(
     location: str = "",
     remote: bool | None = None,
     limit: int = 20,
+    category: str = "",
+    workplace_type: str = "",
 ) -> dict:
-    """Fetch fresh jobs from the enabled free sources (Remotive, Arbeitnow,
-    RemoteOK, Jobicy, Himalayas and RSS). Deduplicates and stores them locally.
-    Returns per-source counts and errors."""
-    service = _jobs()
-    report = service.refresh(
-        JobQuery(query=query, location=location, remote=remote, limit=max(1, min(limit, 50)))
+    """Force a live fetch from the enabled free sources, store and deduplicate the
+    results, then report per-source counts, blocks and errors. Never claims
+    success when every source failed."""
+    job_query = JobQuery(
+        query=query,
+        location=location,
+        remote=remote,
+        limit=max(1, min(limit, 50)),
+        category=category,
+        workplace_type=workplace_type,
     )
-    return report
+    result = get_discovery().discover(job_query, force=True, limit=job_query.limit)
+    return jsonable(
+        {
+            "ok": result.ok,
+            "fetched": result.fetched,
+            "stored": result.stored,
+            "total": result.total,
+            "errors": result.errors,
+            "source_status": result.source_status,
+            "interpreted": result.interpreted,
+            "retrieved_at": result.retrieved_at,
+            "message": result.message,
+        }
+    )
 
 
 @mcp.tool()

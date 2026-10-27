@@ -2,6 +2,7 @@
 {% from "macros.html" import icon %}
 {% block content %}
 <form class="page-stack profile-form" id="profile-form">
+  {% if resume_error %}<div class="auth-error" role="alert">Resume upload did not complete: {{ resume_error }}. You can retry below or edit the profile by hand.</div>{% endif %}
   <div class="profile-layout">
     <div class="profile-main">
       <section class="panel">
@@ -73,6 +74,24 @@
           <label class="field"><span>Skills to avoid</span><textarea id="p-skills-to-avoid" rows="2" placeholder="Cold calling"></textarea></label>
         </div>
         <label class="field"><span>Notes for the agent</span><textarea id="p-notes" rows="2" placeholder="Prefer small product teams. Open to remote roles overlapping 4+ hours with PKT."></textarea></label>
+      </section>
+
+      <section class="panel resume-panel" id="resume-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">Resume</span>
+            <h3>Upload once, review the extraction</h3>
+            <p>PDF, DOCX or TXT. JobPilot extracts text and suggests profile fields — nothing is applied until you confirm.</p>
+          </div>
+          <span class="badge badge-ghost" id="resume-active-badge" hidden>Active</span>
+        </div>
+        <label class="resume-drop" id="resume-drop" for="resume-input">
+          {{ icon("file", 22) }}
+          <strong>Drop a resume here or browse</strong>
+          <small>PDF · DOCX · TXT · up to 8 MB. Scanned PDFs need manual text.</small>
+          <input type="file" id="resume-input" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
+        </label>
+        <div class="resume-list" id="resume-list"></div>
       </section>
 
       <section class="panel">
@@ -166,4 +185,7 @@
   </div>
 </form>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/profile.js', v=app_version) }}"></script>{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/profile.js', v=app_version) }}"></script>
+<script src="{{ url_for('static', filename='js/resume.js', v=app_version) }}"></script>
+{% endblock %}

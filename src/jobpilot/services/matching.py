@@ -23,6 +23,7 @@ from jobpilot.core.utils import clamp, json_dumps, json_loads
 from jobpilot.harness.guardrails import as_untrusted
 from jobpilot.harness.llm import BudgetExceeded, LLMError, LLMGateway, get_llm
 from jobpilot.memory.embeddings import cosine_similarity, tokenize
+from jobpilot.pipelines.categories import is_related, title_match
 from jobpilot.pipelines.embed import (
     ensure_vector,
     ensure_vectors_many,
@@ -30,6 +31,8 @@ from jobpilot.pipelines.embed import (
     job_vector_id,
 )
 from jobpilot.pipelines.extract import canonical_skill, extract_skills
+from jobpilot.pipelines.intent import SearchIntent, interpret_query
+from jobpilot.services.discovery import get_discovery
 from jobpilot.services.jobs import JobService, get_jobs
 from jobpilot.services.profile import ProfileService
 
@@ -133,16 +136,32 @@ class MatchingService:
         refresh: bool = True,
         use_llm: bool = True,
     ) -> list[RankedJob]:
+        intent = interpret_query(
+            query=query.query,
+            location=query.location,
+            remote=query.remote,
+            category=query.category,
+            seniority=query.seniority,
+            workplace_type=query.workplace_type,
+            employment_type=query.employment_type,
+            posted_within_days=query.posted_within_days,
+            sources=query.sources,
+            include_related=query.include_related,
+        )
         if refresh:
             with suppress(Exception):
-                self.jobs.refresh(query)
-        # Rank a wide candidate pool, not just the newest few. Search orders by
-        # recency, so a small pool would let publication time decide the winner.
+                get_discovery().discover(
+                    query,
+                    force=False,
+                    sort="relevance",
+                    limit=max(limit, 20),
+                )
+        # The search layer already applied every mandatory filter, so the pool
+        # cannot contain unrelated occupations. Rank a wide candidate pool but
+        # never relax a filter just to make the list longer.
         pool = min(max(limit * 10, 200), 1000)
         search_query = query.model_copy(update={"limit": pool})
         jobs = self.jobs.search(search_query)
-        if not jobs and query.query:
-            jobs = self.jobs.search(query.model_copy(update={"query": "", "limit": pool}))
         if not jobs:
             return []
 
@@ -156,6 +175,8 @@ class MatchingService:
 
         results: list[MatchResult] = []
         by_id: dict[str, Job] = {}
+        relevance: dict[str, float] = {}
+        kind: dict[str, int] = {}
         for job in jobs:
             vector = vectors.get(job_vector_id(job))
             if vector is None:
@@ -164,8 +185,23 @@ class MatchingService:
             self._save(result, version)
             results.append(result)
             by_id[job.id] = job
+            relevance[job.id] = self._query_relevance(job, intent)
+            # Occupations that only share a family (finance -> accounting) come
+            # after exact matches, but before a weak profile-fit role.
+            related = intent.category and is_related(job.category, intent.category)
+            kind[job.id] = 0 if (not related or job.category == intent.category) else 1
 
-        results.sort(key=lambda item: item.score, reverse=True)
+        def ranking_key(item: MatchResult) -> tuple[float, float, float, float]:
+            # Occupation family first (exact before related), then profile fit,
+            # then the requested-role relevance, then freshness.
+            return (
+                kind.get(item.job_id, 0),
+                -item.score,
+                -relevance.get(item.job_id, 0.0),
+                -(self._posted_ts(by_id[item.job_id])),
+            )
+
+        results.sort(key=ranking_key)
 
         if use_llm and self.llm.available:
             for result in results[: min(5, limit)]:
@@ -178,15 +214,49 @@ class MatchingService:
                 result.breakdown = upgraded.breakdown
                 result.matched_skills = upgraded.matched_skills
                 result.missing_skills = upgraded.missing_skills
-            results.sort(key=lambda item: item.score, reverse=True)
+            results.sort(key=ranking_key)
 
         ranked: list[RankedJob] = []
         for result in results[:limit]:
             job = by_id[result.job_id]
+            job.match_kind = "exact" if kind.get(job.id, 0) == 0 else "related"
             ranked.append(
                 RankedJob(job=self.jobs.to_card(job, {"score": result.score}), match=result)
             )
         return ranked
+
+    @staticmethod
+    def _query_relevance(job: Job, intent: SearchIntent) -> float:
+        if intent.category:
+            if job.category == intent.category:
+                return 1.0
+            if is_related(job.category, intent.category):
+                return 0.5
+            return 0.0
+        if intent.search_query:
+            return title_match(job.title, intent.search_query)
+        return 1.0
+
+    @staticmethod
+    def _posted_ts(job: Job) -> float:
+        from datetime import datetime
+
+        for value in (job.posted_at, job.first_seen_at, job.last_seen_at):
+            if not value:
+                continue
+            text = str(value)
+            if text.endswith("Z"):
+                text = text[:-1] + "+00:00"
+            try:
+                parsed = datetime.fromisoformat(text)
+            except ValueError:
+                continue
+            if parsed.tzinfo is None:
+                from datetime import UTC
+
+                parsed = parsed.replace(tzinfo=UTC)
+            return parsed.timestamp()
+        return 0.0
 
     def skill_gap(self, job_id: str) -> list[SkillGap]:
         job = self.jobs.get(job_id)

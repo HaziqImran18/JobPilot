@@ -22,6 +22,14 @@ class JobQuery(StrictModel):
     limit: int = Field(default=20, ge=1, le=100)
     sources: list[str] = Field(default_factory=list)
     posted_within_days: int | None = Field(default=None, ge=1, le=90)
+    # Structured filters. ``remote`` remains for compatibility with existing
+    # callers; new callers should use ``workplace_type``.
+    category: str = ""
+    workplace_type: str = ""
+    seniority: str = ""
+    employment_type: str = ""
+    skills: list[str] = Field(default_factory=list)
+    include_related: bool = True
 
 
 class Salary(StrictModel):
@@ -45,6 +53,15 @@ class RawJob(StrictModel):
     posted_at: Any = None
     tags: list[str] = Field(default_factory=list)
     raw: dict[str, Any] = Field(default_factory=dict)
+    # Optional structured hints from a source. The extraction pipeline still
+    # verifies and fills these from the posting text.
+    workplace_type: str = ""
+    company_location: str = ""
+    job_location: str = ""
+    eligible_locations: list[str] = Field(default_factory=list)
+    remote_scope: str = ""
+    category: str = ""
+    seniority: str = ""
 
 
 class Job(StrictModel):
@@ -65,6 +82,20 @@ class Job(StrictModel):
     tags: list[str] = Field(default_factory=list)
     raw: dict[str, Any] = Field(default_factory=dict)
     score: float | None = None
+    # Structured geography and occupation.
+    category: str = "other"
+    seniority: str = ""
+    workplace_type: str = ""
+    company_location: str = ""
+    job_location: str = ""
+    eligible_locations: list[str] = Field(default_factory=list)
+    remote_scope: str = "unknown"
+    location_confidence: str = "unknown"
+    status: str = "active"
+    first_seen_at: str | None = None
+    last_seen_at: str | None = None
+    last_checked_at: str | None = None
+    match_kind: str = ""
 
     @property
     def posted_iso(self) -> str | None:
@@ -85,6 +116,18 @@ class JobCard(StrictModel):
     posted_at: str | None = None
     top_skills: list[str] = Field(default_factory=list)
     score: float | None = None
+    category: str = "other"
+    category_label: str = ""
+    seniority: str = ""
+    employment_type: str = ""
+    workplace_type: str = ""
+    job_location: str = ""
+    remote_scope: str = "unknown"
+    location_confidence: str = "unknown"
+    eligible_locations: list[str] = Field(default_factory=list)
+    eligibility_label: str = ""
+    match_kind: str = "exact"
+    status: str = "active"
 
 
 # ------------------------------------------------------------------------ profile

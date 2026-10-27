@@ -16,7 +16,7 @@ It is also a demonstration of four things:
 
 | Pillar | What is implemented |
 |---|---|
-| **MCP** | Six typed stdio servers exposing 22 tools, discovered and invoked at runtime |
+| **MCP** | Six typed stdio servers exposing 23 tools, discovered and invoked at runtime |
 | **Harness** | Agent loop, budgets, permissions, approvals, guardrails, tracing, evals |
 | **Context & memory** | Deliberate context assembly and a persistent memory policy you can inspect |
 | **Multi-user isolation** | Password accounts, per-account databases, scoped MCP processes and sessions |
@@ -65,7 +65,7 @@ Agent harness
   └── MCP manager .......... one stdio process group per account
         │
         ▼
-MCP servers (22 tools)
+MCP servers (23 tools)
   jobs · profile · memory · match · tailor · tracker
         │
         ▼
@@ -99,8 +99,9 @@ The CLI resolves an account automatically when exactly one exists. With several 
 
 ## What you can do
 
-- **Job board** - search by title/company/skill, filter by location, work mode, source, posted date and minimum score, then sort by recency, fit or salary.
-- **Chat** — streamed tool timeline, job cards, approvals and memory proposals.
+- **Job board** - search live or filter the stored snapshot (`live=0`), with structured occupation, city/province/country, workplace, seniority, employment and posted-date filters. Remote cards state whether eligibility is confirmed, restricted to a country/region/city, or unknown.
+- **Chat** — streamed tool timeline, interpreted filters, per-source status, job cards, approvals and memory proposals. The agent and the board share the same discovery pipeline.
+- **Resumes** — upload PDF, DOCX or TXT during signup or from the Profile page, review and edit the extracted fields, apply them to the profile, switch between versions, download or delete. Text-based PDFs are parsed locally; scanned PDFs ask for manual text. Personalization is opt-in.
 - **Applications** — Kanban pipeline with drag/drop stages, follow-up dates, notes and a full event history.
 - **Memory** — inspect, add, confirm, forget and test recall.
 - **Profile** — structured identity, preferences, experience, education, projects and skills.
@@ -144,8 +145,8 @@ jobpilot serve --open
 
 The app starts on `http://127.0.0.1:5000`.
 
-1. Register the first account at `/register`.
-2. Fill in the Profile page. Nothing is prefilled.
+1. Register the first account at `/register` (optionally attaching a resume).
+2. Fill in the Profile page, or review the resume extraction and apply it. Nothing is prefilled.
 3. Open **Job board** and fetch live jobs, or ask the chat: **“Find AI Engineer jobs”**.
 
 On first run the app creates `data/auth.db` and the account's private workspace. No profile, job or application data is seeded.
@@ -219,7 +220,7 @@ Each server is a separate Python process launched over stdio with the official M
 | Server | Tools |
 |---|---|
 | `jobs` | `search_jobs`, `get_job`, `refresh_jobs`, `add_job_from_url` |
-| `profile` | `get_profile`, `search_experience`, `list_skills` |
+| `profile` | `get_profile`, `search_experience`, `list_skills`, `get_active_resume` |
 | `memory` | `remember`, `recall`, `list_memories`, `forget`, `confirm_memory` |
 | `match` | `score_job`, `rank_jobs`, `skill_gap` |
 | `tailor` | `tailor_cv`, `draft_cover_letter` |
@@ -232,6 +233,19 @@ jobpilot doctor --mcp
 ```
 
 The System page shows the same count and any failed server.
+
+---
+
+## Search pipeline
+
+Chat and the job board call the same `DiscoveryService`. A request is interpreted first (occupation, location, workplace, seniority, employment), then live sources are fetched when the cached snapshot is stale, and the same filter/ranking code produces both surfaces. There is no separate board-only filter that the agent can bypass.
+
+- Results are cached per interpreted request for 10 minutes; failed retrievals are cached for 90 seconds so a broken source is not hammered.
+- Every response reports `retrieved_at`, whether it came from cache, how many postings were fetched, and per-source status (ok / empty / error with the reason).
+- Occupation classification is title-first. A company description mentioning accounting cannot turn an engineering role into an accounting match, and ambiguous multi-role titles become `other` rather than a false exact hit.
+- Related occupations are labelled `related` and are only shown when the query is broad or the posting matches every meaningful query term.
+- Location data is structured: `workplace_type`, `job_location`, `company_location`, `eligible_locations`, `remote_scope`, `location_confidence`. A remote job with no stated eligibility is **not** treated as a match for a specific city.
+- The board passes `live=0` while the user types, so keystrokes filter the stored snapshot instead of hitting every source. Pressing **Search live jobs** performs a real retrieval with the same filters.
 
 ---
 
@@ -275,6 +289,32 @@ From the CLI:
 ```bash
 jobpilot tailor job_cc13d5fe4dc357
 jobpilot track job_cc13d5fe4dc357 --status applied
+```
+
+---
+
+## Resumes
+
+A resume can be uploaded when the account is created or later from **Profile → Resumes**. Files are validated by extension, content signature and size (PDF, DOCX and TXT up to 8 MB), hashed, and stored in the account's private `uploads/` directory.
+
+Extraction runs locally: `pypdf` reads text-based PDFs, `python-docx` reads DOCX, and plain text is read directly. The review dialog shows the parsed name, headline, contact details, links, location, skills, experience, education and projects. Nothing is applied until the user confirms, and **Apply to profile** merges fields without deleting existing experience, education or projects.
+
+- Multiple versions are supported; exactly one is active at a time.
+- Activate, download and delete are available per version.
+- Scanned/image-only PDFs have no text layer. When no OCR engine is available the upload is stored with an explicit error and the UI asks for pasted text — JobPilot never invents resume content.
+- Resume personalization is opt-in. The active resume is exposed to the agent as `get_active_resume`, but its text is treated as user data, not instructions.
+
+API surface (all require the signed-in account; writes need `X-JobPilot: 1`):
+
+```text
+GET    /api/resumes
+POST   /api/resumes                 multipart file, optional activate
+GET    /api/resumes/<id>
+GET    /api/resumes/<id>/file
+PUT    /api/resumes/<id>            edit reviewed fields
+POST   /api/resumes/<id>/activate
+POST   /api/resumes/<id>/apply      merge selected fields into the profile
+DELETE /api/resumes/<id>
 ```
 
 ---
@@ -352,7 +392,7 @@ pytest
 ruff check src tests
 ```
 
-The suite covers database migrations, auth and cross-account isolation, salary/skill extraction, dedupe fingerprints, ranking, tailoring, tracking, memory policy, approvals, all page routes, JSON/SSE-adjacent API behaviour, profile round-trips and the eval harness.
+The suite covers database migrations, auth and cross-account isolation, salary/skill extraction, occupation classification (title-first, with ambiguity fallback), city/province/country and postal-code disambiguation, remote eligibility, discovery caching and source failures, resume validation/extraction/activation, dedupe fingerprints, ranking, tailoring, tracking, memory policy, approvals, all page routes, JSON/SSE-adjacent API behaviour, profile round-trips and the eval harness.
 
 ---
 
@@ -362,8 +402,8 @@ The suite covers database migrations, auth and cross-account isolation, salary/s
 src/jobpilot/
   core/        settings, auth, user context, Pydantic models, SQLite schema
   sources/     concurrent free adapters + registry
-  pipelines/   extraction, dedupe, embeddings
-  services/    jobs, matching, tailoring, tracking, chat, profile, doctor
+  pipelines/   extraction, occupation intent, location/remote resolution, dedupe, embeddings
+  services/    jobs, discovery, resume, matching, tailoring, tracking, chat, profile, doctor
   memory/      store, policy, summarizer, embedding backends
   harness/     loop, MCP client, executor, permissions, guardrails, tracing
   servers/     six MCP stdio servers
@@ -380,7 +420,7 @@ data/          auth.db + per-account workspaces (gitignored)
 
 Each account has its own SQLite database in WAL mode with per-operation connections, so Flask threads and MCP subprocesses do not share handles. The schema is created and migrated idempotently on first use:
 
-`profile`, `experiences`, `education`, `projects`, `skills`, `jobs`, `job_scores`, `applications`, `application_events`, `memories`, `vectors`, `chat_sessions`, `chat_messages`, `llm_cache`, `llm_usage`, `approvals`, `source_health`, `kv`, plus `jobs_fts` for full-text search.
+`profile`, `experiences`, `education`, `projects`, `skills`, `resumes`, `jobs`, `job_scores`, `applications`, `application_events`, `memories`, `vectors`, `chat_sessions`, `chat_messages`, `search_runs`, `llm_cache`, `llm_usage`, `approvals`, `source_health`, `kv`, plus `jobs_fts` for full-text search.
 
 The shared `data/auth.db` stores only account records. See `data/README.md` for the layout and reset steps.
 

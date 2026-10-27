@@ -93,6 +93,18 @@ CREATE TABLE IF NOT EXISTS jobs (
     fingerprint TEXT NOT NULL,
     tags TEXT NOT NULL DEFAULT '[]',
     raw TEXT NOT NULL DEFAULT '{}',
+    category TEXT NOT NULL DEFAULT 'other',
+    seniority TEXT NOT NULL DEFAULT '',
+    workplace_type TEXT NOT NULL DEFAULT '',
+    company_location TEXT NOT NULL DEFAULT '',
+    job_location TEXT NOT NULL DEFAULT '',
+    eligible_locations TEXT NOT NULL DEFAULT '[]',
+    remote_scope TEXT NOT NULL DEFAULT 'unknown',
+    location_confidence TEXT NOT NULL DEFAULT 'unknown',
+    status TEXT NOT NULL DEFAULT 'active',
+    first_seen_at TEXT,
+    last_seen_at TEXT,
+    last_checked_at TEXT,
     UNIQUE (source, external_id)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_fingerprint ON jobs(fingerprint);
@@ -248,12 +260,82 @@ CREATE TABLE IF NOT EXISTS source_health (
     checked_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS resumes (
+    id TEXT PRIMARY KEY,
+    filename TEXT NOT NULL,
+    stored_path TEXT NOT NULL,
+    mime_type TEXT NOT NULL DEFAULT '',
+    size_bytes INTEGER NOT NULL DEFAULT 0,
+    sha256 TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'uploaded',
+    text TEXT NOT NULL DEFAULT '',
+    extracted TEXT NOT NULL DEFAULT '{}',
+    error TEXT NOT NULL DEFAULT '',
+    is_active INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_resumes_created ON resumes(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS search_runs (
+    signature TEXT PRIMARY KEY,
+    query TEXT NOT NULL DEFAULT '',
+    filters TEXT NOT NULL DEFAULT '{}',
+    report TEXT NOT NULL DEFAULT '{}',
+    total INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS kv (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL DEFAULT '',
     updated_at TEXT NOT NULL
 );
 """
+
+
+# Additive columns introduced after the first release. Existing accounts are
+# upgraded in place; `CREATE TABLE IF NOT EXISTS` alone would leave them behind.
+_JOB_EXTRA_COLUMNS: dict[str, str] = {
+    "category": "TEXT NOT NULL DEFAULT 'other'",
+    "seniority": "TEXT NOT NULL DEFAULT ''",
+    "workplace_type": "TEXT NOT NULL DEFAULT ''",
+    "company_location": "TEXT NOT NULL DEFAULT ''",
+    "job_location": "TEXT NOT NULL DEFAULT ''",
+    "eligible_locations": "TEXT NOT NULL DEFAULT '[]'",
+    "remote_scope": "TEXT NOT NULL DEFAULT 'unknown'",
+    "location_confidence": "TEXT NOT NULL DEFAULT 'unknown'",
+    "status": "TEXT NOT NULL DEFAULT 'active'",
+    "first_seen_at": "TEXT",
+    "last_seen_at": "TEXT",
+    "last_checked_at": "TEXT",
+}
+_EXTRA_INDEXES = (
+    "CREATE INDEX IF NOT EXISTS idx_jobs_category ON jobs(category)",
+    "CREATE INDEX IF NOT EXISTS idx_jobs_workplace ON jobs(workplace_type)",
+    "CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)",
+    "CREATE INDEX IF NOT EXISTS idx_jobs_last_seen ON jobs(last_seen_at DESC)",
+)
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Apply additive migrations idempotently.
+
+    SQLite cannot add a column that already exists, so every column is checked
+    against ``PRAGMA table_info`` before it is added. Running this on a brand-new
+    database is a no-op because the schema above already contains the columns.
+    """
+    existing = {row["name"] for row in conn.execute("PRAGMA table_info(jobs)")}
+    for name, ddl in _JOB_EXTRA_COLUMNS.items():
+        if name not in existing:
+            conn.execute(f"ALTER TABLE jobs ADD COLUMN {name} {ddl}")  # noqa: S608 - fixed names
+    for statement in _EXTRA_INDEXES:
+        conn.execute(statement)
+    conn.execute(
+        "INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (2, ?)",
+        (utc_now_iso(),),
+    )
 
 
 class Database:
@@ -307,6 +389,7 @@ class Database:
                     "INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (1, ?)",
                     (utc_now_iso(),),
                 )
+                _migrate(conn)
             self._initialized = True
 
     # ----------------------------------------------------------------- queries

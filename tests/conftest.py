@@ -45,6 +45,8 @@ _TABLES = [
     "chat_sessions",
     "jobs",
     "source_health",
+    "resumes",
+    "search_runs",
     "skills",
     "projects",
     "education",

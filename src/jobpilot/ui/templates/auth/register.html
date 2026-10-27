@@ -29,7 +29,7 @@
 
     {% if error %}<div class="auth-error" role="alert">{{ error }}</div>{% endif %}
 
-    <form method="post" action="{{ url_for('views.register_page') }}" class="auth-form">
+    <form method="post" action="{{ url_for('views.register_page') }}" class="auth-form" enctype="multipart/form-data">
       <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       <label class="field"><span>Your name</span>
         <input type="text" name="display_name" autocomplete="name" maxlength="80" required autofocus>
@@ -43,6 +43,10 @@
       <label class="field"><span>Confirm password</span>
         <input type="password" name="password_confirm" autocomplete="new-password" minlength="8" required>
       </label>
+      <label class="field"><span>Resume · optional</span>
+        <input type="file" name="resume" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
+      </label>
+      <p class="fine-print">PDF, DOCX or TXT up to 8 MB. You review every extracted field before it touches your profile.</p>
       <button class="btn btn-primary" type="submit">Create account</button>
     </form>
 

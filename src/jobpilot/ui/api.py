@@ -15,6 +15,7 @@ from flask import (
     g,
     jsonify,
     request,
+    send_file,
     send_from_directory,
     stream_with_context,
 )
@@ -39,10 +40,12 @@ from jobpilot.harness.permissions import get_broker
 from jobpilot.harness.tracing import TraceStore
 from jobpilot.memory.store import MemoryStore
 from jobpilot.services.chat import ChatService
+from jobpilot.services.discovery import get_discovery
 from jobpilot.services.doctor import get_doctor
 from jobpilot.services.jobs import get_jobs
 from jobpilot.services.matching import get_matching
 from jobpilot.services.profile import ProfileService
+from jobpilot.services.resume import ResumeError, get_resumes
 from jobpilot.services.tailoring import get_tailoring
 from jobpilot.services.tracking import get_tracking
 
@@ -229,19 +232,97 @@ def list_jobs() -> Response:
         offset = max(int(request.args.get("offset", 0)), 0)
     except ValueError as exc:
         raise ApiError("limit and offset must be numbers.", 400) from exc
-    result = get_jobs().list_cards(
-        profile_version=_profile_version(),
+
+    force = request.args.get("refresh", "") in {"1", "true", "yes"}
+    query = JobQuery(
         query=request.args.get("query", ""),
         location=request.args.get("location", ""),
         remote=remote_value,
-        source=request.args.get("source", ""),
-        min_score=min_score,
-        sort=request.args.get("sort", "newest"),
-        posted_within_days=posted_within_days,
         limit=limit,
-        offset=offset,
+        posted_within_days=posted_within_days,
+        category=request.args.get("category", ""),
+        workplace_type=request.args.get("workplace_type", ""),
+        seniority=request.args.get("seniority", ""),
+        employment_type=request.args.get("employment_type", ""),
+        sources=[request.args["source"]] if request.args.get("source") else [],
     )
-    return jsonify(result)
+    # Any substantive search is a user request for live data. Plain board loads
+    # stay local; a stale cache is refreshed on the next search, not on every
+    # page view. The UI can pass live=0 while the user is still typing, so
+    # keystrokes filter the stored snapshot instead of hitting every source.
+    live_param = request.args.get("live", "")
+    wants_live = live_param != "0" and (
+        force
+        or any(
+            [
+                query.query.strip(),
+                query.location.strip(),
+                query.category,
+                query.workplace_type,
+                query.seniority,
+                query.employment_type,
+                query.posted_within_days,
+            ]
+        )
+    )
+    discovery = get_discovery()
+    if wants_live:
+        result = discovery.discover(
+            query,
+            force=force,
+            profile_version=_profile_version(),
+            sort=request.args.get("sort", "relevance"),
+            min_score=min_score,
+            limit=limit,
+            offset=offset,
+        )
+        payload = result.as_dict()
+    else:
+        page = get_jobs().list_cards(
+            profile_version=_profile_version(),
+            query=query.query,
+            location=query.location,
+            remote=query.remote,
+            category=query.category,
+            workplace_type=query.workplace_type,
+            seniority=query.seniority,
+            employment_type=query.employment_type,
+            posted_within_days=query.posted_within_days,
+            sources=query.sources,
+            sort=request.args.get("sort", "relevance"),
+            min_score=min_score,
+            limit=limit,
+            offset=offset,
+        )
+        status = discovery.status()
+        payload = {
+            "items": page["items"],
+            "total": page["total"],
+            "limit": limit,
+            "offset": offset,
+            "exact": page.get("exact", 0),
+            "related": page.get("related", 0),
+            "sources": page.get("sources") or {},
+            "interpreted": page.get("interpreted") or {},
+            "source_status": status["sources"],
+            "errors": {},
+            "cached": True,
+            "ok": True,
+            "fetched": 0,
+            "stored": 0,
+            "duration_ms": 0,
+            "retrieved_at": None,
+            "message": "",
+            "stats": status["stats"],
+        }
+    payload.setdefault("stats", get_jobs().stats())
+    return jsonify(payload)
+
+
+@api.get("/jobs/stats")
+def job_stats() -> Response:
+    status = get_discovery().status()
+    return jsonify(status)
 
 
 @api.get("/jobs/<job_id>")
@@ -257,8 +338,15 @@ class JobSearchRequest(BaseModel):
     location: str = ""
     remote: bool | None = None
     limit: int = Field(default=24, ge=1, le=50)
+    offset: int = Field(default=0, ge=0)
     posted_within_days: int | None = Field(default=None, ge=1, le=90)
     sources: list[str] = Field(default_factory=list)
+    category: str = ""
+    workplace_type: str = ""
+    seniority: str = ""
+    employment_type: str = ""
+    include_related: bool = True
+    sort: str = "relevance"
     use_llm: bool = True
 
 
@@ -273,8 +361,20 @@ def refresh_jobs() -> Response:
         limit=min(payload.limit, 50),
         posted_within_days=payload.posted_within_days,
         sources=payload.sources,
+        category=payload.category,
+        workplace_type=payload.workplace_type,
+        seniority=payload.seniority,
+        employment_type=payload.employment_type,
+        include_related=payload.include_related,
     )
-    report = get_jobs().refresh(query)
+    result = get_discovery().discover(
+        query,
+        force=True,
+        profile_version=_profile_version(),
+        sort=payload.sort,
+        limit=min(payload.limit, 50),
+        offset=payload.offset,
+    )
     ranked = get_matching().rank_jobs(
         query,
         limit=min(payload.limit, 30),
@@ -283,9 +383,20 @@ def refresh_jobs() -> Response:
     )
     return jsonify(
         {
-            "report": report,
+            "report": {
+                "fetched": result.fetched,
+                "stored": result.stored,
+                "errors": result.errors,
+                "duration_ms": result.duration_ms,
+                "interpreted": result.interpreted,
+                "retrieved_at": result.retrieved_at,
+                "source_status": result.source_status,
+            },
+            "jobs": result.as_dict(),
             "ranked": [item.model_dump(mode="json") for item in ranked],
             "count": len(ranked),
+            "ok": result.ok,
+            "message": result.message,
         }
     )
 
@@ -301,6 +412,11 @@ def rank_jobs() -> Response:
         limit=min(payload.limit, 50),
         posted_within_days=payload.posted_within_days,
         sources=payload.sources,
+        category=payload.category,
+        workplace_type=payload.workplace_type,
+        seniority=payload.seniority,
+        employment_type=payload.employment_type,
+        include_related=payload.include_related,
     )
     ranked = get_matching().rank_jobs(
         query,
@@ -532,6 +648,163 @@ def update_profile() -> Response:
         profile.preferences = Preferences()
     saved = ProfileService().save(profile)
     return jsonify({"profile": saved.model_dump(mode="json"), "version": saved.version()})
+
+
+# ---------------------------------------------------------------------- resumes
+@api.get("/resumes")
+def list_resumes() -> Response:
+    service = get_resumes()
+    active = service.active()
+    return jsonify(
+        {
+            "resumes": [resume.summary() for resume in service.list()],
+            "active_id": active.id if active else "",
+        }
+    )
+
+
+@api.post("/resumes")
+def upload_resume() -> Response:
+    uploaded = request.files.get("file")
+    if uploaded is None or not uploaded.filename:
+        raise ApiError("Choose a PDF, DOCX or TXT resume to upload.")
+    data = uploaded.read()
+    activate = request.form.get("activate", "1") not in {"0", "false", "no"}
+    try:
+        resume = get_resumes().upload(
+            uploaded.filename,
+            data,
+            mime_type=uploaded.mimetype or "",
+            activate=activate,
+        )
+    except ResumeError as exc:
+        raise ApiError(str(exc)) from exc
+    status = 201 if resume.status != "error" else 202
+    return jsonify({"resume": resume.summary(), "text": resume.text[:12000]}), status
+
+
+@api.get("/resumes/<resume_id>")
+def resume_detail(resume_id: str) -> Response:
+    resume = get_resumes().get(resume_id)
+    if resume is None:
+        raise ApiError("Resume not found.", 404)
+    payload = resume.summary()
+    payload["text"] = resume.text[:20000]
+    return jsonify({"resume": payload})
+
+
+@api.get("/resumes/<resume_id>/file")
+def resume_file(resume_id: str) -> Response:
+    service = get_resumes()
+    resume = service.get(resume_id)
+    path = service.file_path(resume_id)
+    if resume is None or path is None:
+        raise ApiError("Resume file not found.", 404)
+    return send_file(
+        path,
+        mimetype=resume.mime_type or "application/octet-stream",
+        as_attachment=False,
+        download_name=resume.filename,
+        max_age=0,
+    )
+
+
+@api.post("/resumes/<resume_id>/activate")
+def activate_resume(resume_id: str) -> Response:
+    try:
+        resume = get_resumes().activate(resume_id)
+    except ResumeError as exc:
+        raise ApiError(str(exc), 404) from exc
+    return jsonify({"resume": resume.summary()})
+
+
+@api.put("/resumes/<resume_id>")
+def update_resume(resume_id: str) -> Response:
+    payload = request.get_json(silent=True) or {}
+    fields = payload.get("fields") if isinstance(payload.get("fields"), dict) else payload
+    if not isinstance(fields, dict):
+        raise ApiError("Send the reviewed fields as a JSON object.")
+    try:
+        resume = get_resumes().update_fields(resume_id, fields)
+    except ResumeError as exc:
+        raise ApiError(str(exc), 404) from exc
+    return jsonify({"resume": resume.summary()})
+
+
+@api.post("/resumes/<resume_id>/apply")
+def apply_resume(resume_id: str) -> Response:
+    """Copy reviewed resume fields into the profile without erasing other data."""
+    service = get_resumes()
+    resume = service.get(resume_id)
+    if resume is None:
+        raise ApiError("Resume not found.", 404)
+    payload = request.get_json(silent=True) or {}
+    requested = payload.get("fields")
+    if not isinstance(requested, list) or not requested:
+        requested = list(resume.extracted.keys())
+
+    profile = ProfileService().get()
+    source = resume.extracted
+    applied: list[str] = []
+    updates: dict[str, Any] = {}
+    for name in requested:
+        if name not in source:
+            continue
+        value = source[name]
+        if name == "skills":
+            existing = {skill.name.lower() for skill in profile.skills}
+            skills = list(profile.skills)
+            for skill_name in value if isinstance(value, list) else []:
+                cleaned = str(skill_name).strip()
+                if cleaned and cleaned.lower() not in existing:
+                    existing.add(cleaned.lower())
+                    skills.append({"name": cleaned, "level": 3, "years": 0, "category": "general"})
+            if skills:
+                updates["skills"] = skills
+                applied.append("skills")
+            continue
+        if name == "links":
+            merged = dict(profile.links)
+            merged.update({str(k): str(v) for k, v in (value or {}).items() if v})
+            updates["links"] = merged
+            applied.append("links")
+            continue
+        if name in {"full_name", "headline", "email", "phone", "location", "summary"}:
+            text = str(value or "").strip()
+            if text:
+                updates[name] = text
+                applied.append(name)
+            continue
+        if name == "years_experience":
+            continue
+
+    if not updates:
+        raise ApiError("None of the selected fields had a value to apply.")
+
+    merged_profile = profile.model_copy(update={**updates, "updated_at": None})
+    if "skills" in updates:
+        from jobpilot.core.models import Skill
+
+        merged_profile = merged_profile.model_copy(
+            update={"skills": [Skill.model_validate(item) for item in updates["skills"]]}
+        )
+    saved = ProfileService().save(merged_profile)
+    return jsonify(
+        {
+            "profile": saved.model_dump(mode="json"),
+            "version": saved.version(),
+            "applied": applied,
+        }
+    )
+
+
+@api.delete("/resumes/<resume_id>")
+def delete_resume(resume_id: str) -> Response:
+    try:
+        get_resumes().delete(resume_id)
+    except ResumeError as exc:
+        raise ApiError(str(exc), 404) from exc
+    return jsonify({"ok": True})
 
 
 # ----------------------------------------------------------------------- system
