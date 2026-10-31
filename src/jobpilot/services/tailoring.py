@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
+from docx import Document
+from docx.shared import Pt, RGBColor
 from pydantic import BaseModel, Field
 
 from jobpilot.core.config import PROJECT_ROOT, Settings, current_settings
@@ -324,13 +327,287 @@ Do not include any skill or achievement that is not in the candidate facts."""
     def _save_document(self, result: TailorResult, job: Job, profile: Profile) -> str:
         self.settings.uploads_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-        filename = f"cv_{slugify(job.company, 24)}_{timestamp}.md"
-        path = self.settings.uploads_dir / filename
-        path.write_text(self._markdown(result, job, profile), encoding="utf-8")
+        base = f"cv_{slugify(job.company, 24)}_{timestamp}"
+        md_path = self.settings.uploads_dir / f"{base}.md"
+        md_path.write_text(self._markdown(result, job, profile), encoding="utf-8")
+
+        # Also generate a DOCX resume file the candidate can download and send.
+        docx_path = self.settings.uploads_dir / f"{base}.docx"
+        self._save_docx(result, job, profile, docx_path)
+
+        # Generate a printable PDF resume.
+        pdf_path = self.settings.uploads_dir / f"{base}.pdf"
+        self._save_pdf(result, job, profile, pdf_path)
+
         try:
-            return str(path.relative_to(PROJECT_ROOT))
+            return str(md_path.relative_to(PROJECT_ROOT))
         except ValueError:
-            return str(path)
+            return str(md_path)
+
+    def _save_docx(self, result: TailorResult, job: Job, profile: Profile, path: Path) -> None:
+        doc = Document()
+
+        # Base style
+        style = doc.styles["Normal"]
+        style.font.name = "Calibri"
+        style.font.size = Pt(11)
+
+        name = profile.full_name.strip() or "Curriculum Vitae"
+        h = doc.add_heading(name, level=0)
+        for run in h.runs:
+            run.font.color.rgb = RGBColor(0x4B, 0x00, 0x82)  # indigo/violet
+
+        headline = result.headline or profile.headline
+        if headline:
+            p = doc.add_paragraph()
+            r = p.add_run(headline)
+            r.bold = True
+            r.font.size = Pt(13)
+            r.font.color.rgb = RGBColor(106, 90, 250)  # electric violet
+
+        contact_parts = [
+            part for part in [profile.email, profile.phone, profile.location, *profile.links.values()] if part
+        ]
+        if contact_parts:
+            p = doc.add_paragraph(" · ".join(contact_parts))
+            for run in p.runs:
+                run.font.size = Pt(9)
+                run.font.color.rgb = RGBColor(0x6B, 0x73, 0x9C)
+
+        if result.summary.strip():
+            doc.add_heading("Tailored Summary", level=1)
+            doc.add_paragraph(result.summary)
+
+        doc.add_heading("Relevant Experience", level=1)
+        bullet_lookup = {bullet: bullet for bullet in result.bullets}
+        used: set[str] = set()
+        for experience in profile.experiences:
+            matching_bullets = [bullet for bullet in experience.bullets if bullet in bullet_lookup]
+            if not matching_bullets:
+                continue
+            used.update(matching_bullets)
+            p = doc.add_paragraph()
+            r = p.add_run(f"{experience.title} — {experience.company}")
+            r.bold = True
+            dates = f"{experience.start_date} – {experience.end_date or 'Present'}"
+            if experience.location:
+                dates += f" · {experience.location}"
+            p2 = doc.add_paragraph(dates)
+            for run in p2.runs:
+                run.font.size = Pt(9)
+                run.font.color.rgb = RGBColor(0x6B, 0x73, 0x9C)
+            for bullet in matching_bullets:
+                doc.add_paragraph(bullet, style="List Bullet")
+
+        extra = [bullet for bullet in result.bullets if bullet not in used]
+        if extra:
+            doc.add_heading("Additional Evidence", level=1)
+            for bullet in extra:
+                doc.add_paragraph(bullet, style="List Bullet")
+
+        if profile.education:
+            doc.add_heading("Education", level=1)
+            for edu in profile.education:
+                doc.add_paragraph(
+                    f"{edu.degree}, {edu.field_of_study} — {edu.institution} ({edu.end_date})"
+                )
+
+        if profile.skills:
+            doc.add_heading("Skills", level=1)
+            doc.add_paragraph(", ".join(skill.name for skill in profile.skills))
+
+        doc.add_heading("Cover Letter", level=1)
+        doc.add_paragraph(result.cover_letter)
+
+        doc.save(str(path))
+
+    def _save_pdf(self, result: TailorResult, job: Job, profile: Profile, path: Path) -> None:
+        """Write a minimal but valid PDF resume using only the standard library."""
+        path.write_bytes(self._build_pdf_bytes(result, job, profile))
+
+    @staticmethod
+    def _pdf_lines(result: TailorResult, job: Job, profile: Profile) -> list[str]:
+        lines: list[str] = []
+        name = profile.full_name.strip() or "Curriculum Vitae"
+        lines.append(("title", name))
+        headline = result.headline or profile.headline
+        if headline:
+            lines.append(("headline", headline))
+        contact_parts = [
+            part for part in [profile.email, profile.phone, profile.location, *profile.links.values()] if part
+        ]
+        if contact_parts:
+            lines.append(("contact", " · ".join(contact_parts)))
+
+        if result.summary.strip():
+            lines.append(("section", "Tailored Summary"))
+            lines.append(("body", result.summary))
+
+        lines.append(("section", "Relevant Experience"))
+        bullet_lookup = {bullet: bullet for bullet in result.bullets}
+        used: set[str] = set()
+        for experience in profile.experiences:
+            matching_bullets = [bullet for bullet in experience.bullets if bullet in bullet_lookup]
+            if not matching_bullets:
+                continue
+            used.update(matching_bullets)
+            lines.append(("job", f"{experience.title} — {experience.company}"))
+            dates = f"{experience.start_date} – {experience.end_date or 'Present'}"
+            if experience.location:
+                dates += f" · {experience.location}"
+            lines.append(("dates", dates))
+            for bullet in matching_bullets:
+                lines.append(("bullet", bullet))
+
+        extra = [bullet for bullet in result.bullets if bullet not in used]
+        if extra:
+            lines.append(("section", "Additional Evidence"))
+            for bullet in extra:
+                lines.append(("bullet", bullet))
+
+        if profile.education:
+            lines.append(("section", "Education"))
+            for edu in profile.education:
+                lines.append(("body", f"{edu.degree}, {edu.field_of_study} — {edu.institution} ({edu.end_date})"))
+
+        if profile.skills:
+            lines.append(("section", "Skills"))
+            lines.append(("body", ", ".join(skill.name for skill in profile.skills)))
+
+        lines.append(("section", "Cover Letter"))
+        lines.append(("body", result.cover_letter))
+        return lines
+
+    @staticmethod
+    def _build_pdf_bytes(result: TailorResult, job: Job, profile: Profile) -> bytes:
+        lines = TailoringService._pdf_lines(result, job, profile)
+
+        # Build content stream: simple text positioning
+        ops: list[str] = []
+        y = 740
+        ops.append("BT /F1 16 Tf 50 740 Td")  # title position
+        title = lines[0][1] if lines else "Curriculum Vitae"
+        ops.append(f"({TailoringService._pdf_escape(title)}) Tj")
+
+        y -= 30
+        for kind, text in lines[1:]:
+            if y < 60:
+                ops.append("ET showpage")
+                ops.append("BT /F1 16 Tf 50 740 Td")
+                y = 740
+            if kind == "headline":
+                ops.append(f"BT /F1 13 Tf 50 {y} Td ({TailoringService._pdf_escape(text)}) Tj ET")
+                y -= 22
+            elif kind == "section":
+                ops.append(f"BT /F1 12 Tf 50 {y} Td ({TailoringService._pdf_escape(text)}) Tj ET")
+                y -= 18
+            elif kind == "job":
+                ops.append(f"BT /F1 11 Tf 50 {y} Td ({TailoringService._pdf_escape(text)}) Tj ET")
+                y -= 16
+            elif kind == "dates":
+                ops.append(f"BT /F1 9 Tf 50 {y} Td ({TailoringService._pdf_escape(text)}) Tj ET")
+                y -= 14
+            elif kind == "bullet":
+                ops.append(f"BT /F1 10 Tf 60 {y} Td (• {TailoringService._pdf_escape(text)}) Tj ET")
+                y -= 14
+            elif kind == "contact":
+                ops.append(f"BT /F1 9 Tf 50 {y} Td ({TailoringService._pdf_escape(text)}) Tj ET")
+                y -= 14
+            elif kind == "body":
+                # Wrap body text at ~95 chars per line
+                wrapped = TailoringService._wrap(text, 95)
+                for wline in wrapped:
+                    if y < 60:
+                        ops.append("ET showpage")
+                        ops.append("BT /F1 10 Tf 50 740 Td")
+                        y = 740
+                    ops.append(f"BT /F1 10 Tf 50 {y} Td ({TailoringService._pdf_escape(wline)}) Tj ET")
+                    y -= 12
+            y -= 6
+
+        ops.append("ET")
+        content = "\n".join(ops)
+        content_bytes = content.encode("latin-1", "replace")
+        content_len = len(content_bytes)
+
+        # Build objects with correct offsets
+        parts: list[str] = []
+        parts.append("%PDF-1.4")
+
+        def make_obj(num: int, body: str) -> str:
+            return f"{num} 0 obj\n{body}\nendobj"
+
+        obj_file = 1
+        obj_font = 2
+        obj_content = 3
+        obj_resources = 4
+        obj_page = 5
+        obj_pages = 7
+
+        stream_body = f"stream\n{content}\nendstream"
+
+        parts.append(make_obj(obj_file, f"<< /Type /Catalog /Pages {obj_pages} 0 R >>"))
+        parts.append(make_obj(obj_pages, f"<< /Type /Pages /Kids [{obj_page} 0 R] /Count 1 >>"))
+        parts.append(
+            make_obj(
+                obj_page,
+                f"<< /Type /Page /Parent {obj_pages} 0 R /MediaBox [0 0 612 792] /Resources {obj_resources} 0 R /Contents {obj_content} 0 R >>",
+            )
+        )
+        parts.append(make_obj(obj_resources, f"<< /Font << /F1 {obj_font} 0 R >> >>"))
+        parts.append(make_obj(obj_font, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"))
+        parts.append(make_obj(obj_content, f"<< /Length {content_len} >>\n{stream_body}"))
+
+        # Collect offsets (skip the PDF header, it is not an object)
+        header = "%PDF-1.4\n"
+        offset = len(header.encode("latin-1", "replace"))
+        xref_entries: dict[int, int] = {}
+        obj_bodies: list[str] = []
+        for part in parts:
+            if " 0 obj" not in part:
+                continue
+            num = int(part.split(" 0 obj")[0])
+            obj_bodies.append(part)
+            xref_entries[num] = offset
+            offset += len(part.encode("latin-1", "replace")) + len("\n\n")
+
+        xref_start = offset
+        xref_lines = ["xref", f"0 {len(xref_entries) + 1}", "0000000000 65535 f "]
+        for num in sorted(xref_entries):
+            xref_lines.append(f"{xref_entries[num]:010d} 00000 n ")
+        xref_lines.append("trailer")
+        xref_lines.append(f"<< /Size {len(xref_entries) + 1} /Root {obj_file} 0 R >>")
+        xref_lines.append(f"startxref\n{xref_start}\n%%EOF")
+
+        body_bytes = ("\n\n".join(obj_bodies) + "\n\n").encode("latin-1", "replace")
+        xref_bytes = ("\n".join(xref_lines)).encode("latin-1", "replace")
+        return header.encode("latin-1", "replace") + body_bytes + xref_bytes
+
+    @staticmethod
+    def _pdf_escape(text: str) -> str:
+        return (
+            text.replace("\\", "\\\\")
+            .replace("(", "\\(")
+            .replace(")", "\\)")
+            .replace("\n", "\\n")
+        )
+
+    @staticmethod
+    def _wrap(text: str, width: int) -> list[str]:
+        words = text.split()
+        lines: list[str] = []
+        current = ""
+        for word in words:
+            trial = f"{current} {word}".strip()
+            if len(trial) <= width:
+                current = trial
+            else:
+                if current:
+                    lines.append(current)
+                current = word
+        if current:
+            lines.append(current)
+        return lines
 
     def _markdown(self, result: TailorResult, job: Job, profile: Profile) -> str:
         lines = [

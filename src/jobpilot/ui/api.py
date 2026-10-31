@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import queue
 import threading
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +36,7 @@ from jobpilot.core.models import (
     Profile,
 )
 from jobpilot.core.user_context import user_context
+from jobpilot.core.utils import slugify
 from jobpilot.harness.loop import AgentRunner
 from jobpilot.harness.permissions import get_broker
 from jobpilot.harness.tracing import TraceStore
@@ -466,6 +468,32 @@ def tailor_job(job_id: str) -> Response:
     settings = get_settings()
     result = get_tailoring().tailor_cv(job_id, use_llm=settings.is_live and payload.use_llm)
     return jsonify({"tailoring": result.model_dump(mode="json")})
+
+
+@api.get("/jobs/<job_id>/tailor/download")
+def download_tailored_resume(job_id: str) -> Response:
+    """Download the tailored resume as DOCX or PDF."""
+    from flask import send_file
+
+    fmt = request.args.get("format", "docx").lower()
+    result = get_tailoring().tailor_cv(job_id, use_llm=False)
+    job = get_jobs().get(job_id)
+    if job is None:
+        raise ApiError("Job not found.", 404)
+    profile = ProfileService(get_db()).get()
+    settings = get_settings()
+    settings.uploads_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+    base = f"cv_{slugify(job.company, 24)}_{timestamp}"
+    if fmt == "pdf":
+        path = settings.uploads_dir / f"{base}.pdf"
+        get_tailoring()._save_pdf(result, job, profile, path)
+        mimetype = "application/pdf"
+    else:
+        path = settings.uploads_dir / f"{base}.docx"
+        get_tailoring()._save_docx(result, job, profile, path)
+        mimetype = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    return send_file(path, mimetype=mimetype, as_attachment=True, download_path=path.name)
 
 
 class TrackRequest(BaseModel):

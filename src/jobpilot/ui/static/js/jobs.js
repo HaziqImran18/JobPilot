@@ -452,7 +452,9 @@
     let timer = null;
     const filtered = () => {
       window.clearTimeout(timer);
-      timer = window.setTimeout(() => loadJobs(false, { live: false }), 320);
+      // Typing keywords should search live sources, not just filter the stored
+      // board, so a first-time user sees real jobs even with an empty board.
+      timer = window.setTimeout(() => loadJobs(false, { live: true }), 320);
     };
     const searched = (event) => {
       event?.preventDefault();
@@ -468,13 +470,13 @@
       if (event.key === "Enter") searched(event);
     });
     ["#job-category", "#job-workplace", "#job-seniority", "#job-employment", "#job-source", "#job-posted", "#job-sort"].forEach((selector) => {
-      $(selector)?.addEventListener("change", () => loadJobs(false, { live: false }));
+      $(selector)?.addEventListener("change", () => loadJobs(false, { live: true }));
     });
     $("#job-min-score")?.addEventListener("input", (event) => {
       const value = Number(event.currentTarget.value);
       $("#min-score-label").textContent = value ? `${value}+` : "any";
       window.clearTimeout(timer);
-      timer = window.setTimeout(() => loadJobs(false, { live: false }), 220);
+      timer = window.setTimeout(() => loadJobs(false, { live: true }), 220);
     });
     $("#clear-filters-btn")?.addEventListener("click", clearFilters);
     $("#refresh-jobs-btn")?.addEventListener("click", refreshJobs);

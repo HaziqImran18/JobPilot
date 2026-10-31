@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from jobpilot.core.config import get_settings
 from jobpilot.core.db import Database, get_db
 from jobpilot.core.models import JobQuery
 from jobpilot.core.utils import json_dumps, json_loads, normalize_text, stable_hash, utc_now_iso
@@ -108,6 +109,14 @@ class DiscoveryService:
             sources=query.sources,
             include_related=query.include_related,
         )
+        # Narrow the source scope by workplace type so onsite/hybrid roles come
+        # from Pakistan (Mustakbil) and Germany (Arbeitnow), while remote roles
+        # come from worldwide boards with a focus on Europe and North America.
+        settings = get_settings()
+        if intent.workplace_type == "remote":
+            query.sources = settings.remote_sources_list()
+        elif intent.workplace_type in {"hybrid", "onsite"}:
+            query.sources = settings.onsite_hybrid_sources_list()
         signature = self._signature(intent)
         run = None if force else self._cached_run(signature)
         fetched = 0

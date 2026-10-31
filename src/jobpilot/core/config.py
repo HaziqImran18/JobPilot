@@ -93,6 +93,13 @@ class Settings(BaseSettings):
     default_remote: bool = True
     preload_mcp: bool = False
 
+    # Source scope by workplace type. Narrowing the scope improves result
+    # quality: onsite/hybrid roles are sourced from Pakistan (Mustakbil) and
+    # Germany (Arbeitnow) only; remote roles are sourced worldwide with a
+    # focus on Europe and North America.
+    onsite_hybrid_sources: str = "mustakbil,arbeitnow"
+    remote_sources: str = "remoteok,remotive,himalayas,jobicy,linkedin,talent"
+
     @field_validator(
         "data_dir",
         "db_path",
@@ -122,6 +129,12 @@ class Settings(BaseSettings):
     @property
     def mode(self) -> str:
         return "live" if self.is_live else "unconfigured"
+
+    def remote_sources_list(self) -> list[str]:
+        return [s.strip() for s in self.remote_sources.split(",") if s.strip()]
+
+    def onsite_hybrid_sources_list(self) -> list[str]:
+        return [s.strip() for s in self.onsite_hybrid_sources.split(",") if s.strip()]
 
     @property
     def resolved_embedding_provider(self) -> str:
@@ -155,6 +168,10 @@ class Settings(BaseSettings):
             "default_location": self.default_location,
             "default_remote": self.default_remote,
             "preload_mcp": self.preload_mcp,
+            "source_scope": {
+                "onsite_hybrid": self.onsite_hybrid_sources_list(),
+                "remote": self.remote_sources_list(),
+            },
             "sources": {
                 "remotive": self.enable_remotive,
                 "arbeitnow": self.enable_arbeitnow,

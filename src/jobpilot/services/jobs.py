@@ -54,7 +54,25 @@ _VERIFIED_LOCATION_TIERS = {
     "remote_worldwide",
     "remote",
 }
+# Remote jobs whose eligibility is not stated are still useful for country-level
+# searches: a candidate in Pakistan can apply to a remote role open to Pakistan,
+# even if the source did not spell out the country.
+_REMOTE_UNKNOWN_ALLOWED = {"remote_unknown"}
 _MAX_CANDIDATES = 4000
+
+# Normalise UI seniority labels to the values stored on job rows.
+_SENIORITY_MAP: dict[str, str] = {
+    "intern": "intern",
+    "junior": "entry",
+    "entry": "entry",
+    "mid": "mid",
+    "mid-level": "mid",
+    "senior": "senior",
+    "lead": "lead",
+    "principal": "lead",
+    "manager": "lead",
+    "director": "lead",
+}
 
 
 def _parse_timestamp(value: Any) -> float:
@@ -697,7 +715,9 @@ class JobService:
                     "remote",
                 }
             else:
-                allowed = _VERIFIED_LOCATION_TIERS
+                # Country-level (or broader) requests: a remote role whose
+                # eligibility is not stated may still accept candidates there.
+                allowed = _VERIFIED_LOCATION_TIERS | _REMOTE_UNKNOWN_ALLOWED
             if tier not in allowed:
                 return False, "", 0.0
 
@@ -708,8 +728,11 @@ class JobService:
             elif job.workplace_type != intent.workplace_type:
                 return False, "", 0.0
 
-        if intent.seniority and job.seniority != intent.seniority:
-            return False, "", 0.0
+        if intent.seniority:
+            wanted = _SENIORITY_MAP.get(intent.seniority, intent.seniority)
+            have = _SENIORITY_MAP.get(job.seniority, job.seniority)
+            if wanted and have and wanted != have:
+                return False, "", 0.0
         if intent.employment_type and job.employment_type != intent.employment_type:
             return False, "", 0.0
         if skills:

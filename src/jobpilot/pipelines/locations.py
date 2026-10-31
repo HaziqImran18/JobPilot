@@ -927,9 +927,15 @@ def location_match(
             ):
                 return "exact", "Advertised location matches the requested city."
             if request.country and advertised.country == request.country:
+                # A remote role advertised in the requested country is usable by
+                # a candidate there, even when the specific city is not listed.
                 return "country", "Remote role advertised in the requested country."
         if remote_scope == "unknown" or not eligible:
-            return "remote_unknown", "Remote eligibility is not stated by the source."
+            # Unknown eligibility is not a verified match, but at country level a
+            # remote role is still worth surfacing (it may accept anyone).
+            if not request.city:
+                return "remote_unknown", "Remote eligibility is not stated by the source."
+            return "none", "Remote eligibility does not include the requested city."
         return "none", "Remote eligibility does not include the requested location."
 
     advertised = job_place(job_location)
