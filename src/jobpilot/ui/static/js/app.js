@@ -390,6 +390,21 @@
     return `<span class="eligibility-badge ${tone}"><span class="eligibility-dot"></span>${escapeHtml(label)}</span>`;
   }
 
+  function atsTone(score) {
+    if (score == null) return "neutral";
+    if (score >= 75) return "strong";
+    if (score >= 55) return "good";
+    if (score >= 35) return "fair";
+    return "weak";
+  }
+
+  function atsBadge(job) {
+    const score = job.ats_score;
+    const tone = atsTone(score);
+    const label = score == null ? "ATS n/a" : `ATS ${Math.round(score)}`;
+    return `<span class="ats-badge ${tone}"><span class="ats-dot"></span>${escapeHtml(label)}</span>`;
+  }
+
   function jobCard(item, options = {}) {
     const job = normalizeJob(item);
     if (!job.id) return "";
@@ -414,6 +429,9 @@
           ${scoreRing(score)}
         </div>
         <div class="job-eligibility">${eligibilityBadge(job)}</div>
+        ${job.ats_score !== null && job.ats_score !== undefined
+          ? `<div class="job-ats">${atsBadge(job)}</div>`
+          : ""}
         <div class="job-meta">
           <span><svg class="icon" width="12" height="12"><use href="#i-target"></use></svg>${escapeHtml(location)}</span>
           ${job.seniority ? `<span><svg class="icon" width="12" height="12"><use href="#i-user"></use></svg>${escapeHtml(titleCase(job.seniority))}</span>` : ""}
@@ -474,6 +492,9 @@
           ${job.posted_at ? `<span><svg class="icon" width="13" height="13"><use href="#i-clock"></use></svg>${escapeHtml(formatDate(job.posted_at))}</span>` : ""}
         </div>
         <div class="job-eligibility detail">${eligibilityBadge(job)}</div>
+        ${job.ats_score !== null && job.ats_score !== undefined
+          ? `<div class="job-ats detail"><span class="ats-badge ${atsTone(job.ats_score)}"><span class="ats-dot"></span>ATS ${Math.round(job.ats_score)}</span><p class="fine-print">${escapeHtml(job.ats_rationale || "")}</p></div>`
+          : ""}
         ${detail.rationale ? `<div class="tailor-banner" style="margin-bottom:12px"><svg class="icon" width="16" height="16"><use href="#i-sparkles"></use></svg><div><strong>Why this score</strong><p>${escapeHtml(detail.rationale)}</p></div></div>` : ""}
         ${matched.length ? `<div class="detail-section"><h4>Matched skills</h4>${chips(matched, "match", 12)}</div>` : ""}
         ${missing.length ? `<div class="detail-section"><h4>Gaps to address</h4>${chips(missing, "gap", 12)}</div>` : ""}
@@ -710,6 +731,7 @@
     scoreColor,
     chips,
     eligibilityBadge,
+    atsBadge,
     jobCard,
     openJob,
     tailorJob,

@@ -43,6 +43,7 @@ from jobpilot.pipelines.locations import (
     location_match,
     parse_remote_info,
 )
+from jobpilot.services.ats import get_ats_scoring
 from jobpilot.sources.registry import FetchReport, SourceRegistry, get_registry
 
 INACTIVE_STATUSES = ("expired", "unavailable", "removed")
@@ -236,6 +237,8 @@ class JobService:
         total = len(accepted)
         page = accepted[offset : offset + limit]
         items = []
+        ats = get_ats_scoring()
+        resume_text = ats.active_resume_text()
         for job, match_kind, relevance, score in page:
             job.match_kind = match_kind
             card = self.to_card(job, score).model_dump()
@@ -251,6 +254,19 @@ class JobService:
                 card["missing_skills"] = []
                 card["rationale"] = ""
                 card["breakdown"] = {}
+            if resume_text:
+                ats_result = ats.score_ats(job, resume_text)
+                card["ats_score"] = ats_result.score
+                card["ats_breakdown"] = ats_result.breakdown
+                card["ats_matched_skills"] = ats_result.matched_skills
+                card["ats_missing_skills"] = ats_result.missing_skills
+                card["ats_rationale"] = ats_result.rationale
+            else:
+                card["ats_score"] = None
+                card["ats_breakdown"] = {}
+                card["ats_matched_skills"] = []
+                card["ats_missing_skills"] = []
+                card["ats_rationale"] = "Upload a resume on Profile to see ATS scores."
             items.append(card)
 
         return {
@@ -292,6 +308,21 @@ class JobService:
             if score
             else None
         )
+        ats = get_ats_scoring()
+        resume_text = ats.active_resume_text()
+        if resume_text:
+            ats_result = ats.score_ats(job, resume_text)
+            card["ats_score"] = ats_result.score
+            card["ats_breakdown"] = ats_result.breakdown
+            card["ats_matched_skills"] = ats_result.matched_skills
+            card["ats_missing_skills"] = ats_result.missing_skills
+            card["ats_rationale"] = ats_result.rationale
+        else:
+            card["ats_score"] = None
+            card["ats_breakdown"] = {}
+            card["ats_matched_skills"] = []
+            card["ats_missing_skills"] = []
+            card["ats_rationale"] = "Upload a resume on Profile to see ATS scores."
         return card
 
     def count(self) -> int:

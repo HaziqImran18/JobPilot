@@ -2868,6 +2868,71 @@ kbd {
 }
 .eligibility-badge.unknown .eligibility-dot { background: var(--indigo); }
 
+.job-ats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.ats-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--text-soft);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.ats-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--faint);
+  flex: none;
+}
+
+.ats-badge.strong {
+  border-color: color-mix(in srgb, var(--success) 38%, transparent);
+  background: var(--success-soft);
+  color: var(--success);
+}
+.ats-badge.strong .ats-dot {
+  background: var(--success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 18%, transparent);
+}
+.ats-badge.good {
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+}
+.ats-badge.good .ats-dot { background: var(--accent); }
+.ats-badge.fair {
+  border-color: color-mix(in srgb, var(--warning) 36%, transparent);
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.ats-badge.fair .ats-dot { background: var(--warning); }
+.ats-badge.weak {
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  color: var(--danger);
+}
+.ats-badge.weak .ats-dot { background: var(--danger); }
+.ats-badge.neutral {
+  border-color: var(--border-soft);
+  color: var(--muted);
+}
+.ats-badge.neutral .ats-dot { background: var(--muted); }
+
+.job-ats.detail { margin-top: 10px; }
+.job-ats.detail .fine-print { color: var(--faint); font-size: 9.5px; margin-top: 2px; }
+
 .insight-panel {
   display: flex;
   flex-direction: column;

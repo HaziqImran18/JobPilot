@@ -57,6 +57,7 @@
               <strong>${JP.esc(job.title)}</strong>
               <small>${JP.esc(job.company || "")}${job.location ? ` · ${JP.esc(job.location)}` : ""}</small>
               ${job.workplace_type ? `<div class="job-eligibility chat">${JP.eligibilityBadge(job)}</div>` : ""}
+              ${job.ats_score !== null && job.ats_score !== undefined ? `<div class="job-ats chat">${JP.atsBadge(job)}</div>` : ""}
             </div>
             ${score !== undefined && score !== null ? `<span class="mini-score">${Math.round(score)}</span>` : ""}
           </div>

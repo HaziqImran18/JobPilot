@@ -41,6 +41,7 @@ from jobpilot.harness.loop import AgentRunner
 from jobpilot.harness.permissions import get_broker
 from jobpilot.harness.tracing import TraceStore
 from jobpilot.memory.store import MemoryStore
+from jobpilot.services.ats import get_ats_scoring
 from jobpilot.services.chat import ChatService
 from jobpilot.services.discovery import get_discovery
 from jobpilot.services.doctor import get_doctor
@@ -456,6 +457,16 @@ def score_job(job_id: str) -> Response:
         job_id, force=payload.force, use_llm=settings.is_live and payload.use_llm
     )
     return jsonify({"match": match.model_dump(mode="json")})
+
+
+@api.get("/jobs/<job_id>/ats-score")
+def ats_score(job_id: str) -> Response:
+    """ATS compatibility score of the active resume against this job."""
+    job = get_jobs().get(job_id)
+    if job is None:
+        raise ApiError("Job not found.", 404)
+    result = get_ats_scoring().score_ats(job)
+    return jsonify({"ats": result.__dict__})
 
 
 class TailorRequest(BaseModel):
